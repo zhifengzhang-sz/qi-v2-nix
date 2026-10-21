@@ -1,0 +1,22 @@
+{
+  "name": "@qi/kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The kit: a project's agents/ spec into each kind's files (Claude Code, Copilot); dev/kit/README.md",
+  "scripts": {
+    "check": "biome check src test package.json tsconfig.json biome.json",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "yaml": "2.8.1",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "@types/node": "24.3.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

@@ -1,0 +1,5 @@
+language js
+
+or { JsTryStatement(), JsTryFinallyStatement() } as $t where {
+  register_diagnostic(span=$t, message="no try (dev/ts/STYLE.md): the boundary is result.tryCatch and task.tryPromise")
+}

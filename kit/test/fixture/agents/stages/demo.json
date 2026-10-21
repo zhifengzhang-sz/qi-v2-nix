@@ -1,0 +1,51 @@
+{
+  "name": "demo",
+  "for": "a demo process",
+  "when": "in the kit's tests",
+  "doc": "README.md",
+  "params": {
+    "parts": { "default": [1, 2, 3], "for": "the parts" },
+    "readModel": { "default": { "model": "strongest" }, "for": "the model of Read" }
+  },
+  "order": ["count", "read", "sum"],
+  "results": {
+    "run": {
+      "lines": { "type": "string", "for": "the last lines" },
+      "pass": { "type": "boolean", "for": "every command exited 0" },
+      "count": { "type": "integer", "for": "the number asked for" }
+    },
+    "done": { "read": { "type": "integer", "for": "items read" } }
+  },
+  "stages": [
+    {
+      "name": "count",
+      "title": "Count",
+      "detail": "count the items",
+      "run": ["wc -l items"],
+      "count": "the number of items",
+      "stop-if": { "when": "run failed", "log": "Count failed; stopping" }
+    },
+    {
+      "name": "read",
+      "title": "Read",
+      "detail": "read each range",
+      "task": "Read items {a}–{b} of part {k:02}.",
+      "over": { "ranges": { "count": "count", "size": 4 }, "as": ["a", "b"], "index": "k" },
+      "mode": "parallel",
+      "model": "readModel",
+      "can": ["read"],
+      "writes": "none",
+      "result": "done",
+      "skip-if": { "when": "count of count is 0", "record": "nothing to read" },
+      "missing": "Read: {m} ranges returned nothing"
+    },
+    {
+      "name": "sum",
+      "title": "Sum",
+      "detail": "one agent sums, on the session's model",
+      "task": "Sum the reads.",
+      "model": "session",
+      "result": "done"
+    }
+  ]
+}

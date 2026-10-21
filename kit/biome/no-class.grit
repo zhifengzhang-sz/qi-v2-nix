@@ -1,0 +1,5 @@
+language js
+
+or { JsClassDeclaration(), JsClassExpression(), JsClassExportDefaultDeclaration() } as $c where {
+  register_diagnostic(span=$c, message="no classes (dev/ts/STYLE.md): plain readonly data and functions")
+}

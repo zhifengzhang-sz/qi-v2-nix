@@ -1,0 +1,5 @@
+language js
+
+`Math.random()` as $r where {
+  register_diagnostic(span=$r, message="no randomness in a pure part (dev/ts/STYLE.md): an effect, pass it in")
+}

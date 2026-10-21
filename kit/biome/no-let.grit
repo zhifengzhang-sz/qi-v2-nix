@@ -1,0 +1,7 @@
+language js
+
+// A snippet `let $x = $v` does not match in Biome 2.4.15 (tried 2026-10-15); the declaration's text does.
+JsVariableDeclaration() as $d where {
+  $d <: r"let[\s\S]*",
+  register_diagnostic(span=$d, message="no let (dev/ts/STYLE.md): const, and a new value instead of a changed one")
+}

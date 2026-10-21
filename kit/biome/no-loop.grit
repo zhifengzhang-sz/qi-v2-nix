@@ -1,0 +1,5 @@
+language js
+
+or { JsForStatement(), JsForInStatement(), JsForOfStatement(), JsWhileStatement(), JsDoWhileStatement() } as $l where {
+  register_diagnostic(span=$l, message="no loops (dev/ts/STYLE.md): map, filter, reduce, flatMap")
+}

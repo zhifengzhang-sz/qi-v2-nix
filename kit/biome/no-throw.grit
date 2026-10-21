@@ -1,0 +1,5 @@
+language js
+
+JsThrowStatement() as $t where {
+  register_diagnostic(span=$t, message="no throw (dev/ts/STYLE.md): return a Result")
+}
