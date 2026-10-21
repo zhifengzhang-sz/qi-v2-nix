@@ -25,7 +25,7 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
 
   | Preset | Tools | Caches |
   |---|---|---|
-  | `tex` | TeX Live with the Chinese collection, luatexja, Erewhon and its maths, Fourier, latexmk; Source Han Serif SC and Sans SC, JuliaMono (`OSFONTDIR`, `FONTCONFIG_FILE`) | — |
+  | `tex` | TeX Live with the Chinese collection, luatexja, Erewhon and its maths, Fourier, latexmk, biber; Source Han Serif SC and Sans SC, JuliaMono (`OSFONTDIR`, `FONTCONFIG_FILE`) | — |
   | `haskell` | GHC, cabal | `CABAL_DIR` |
   | `haskellLsp` | haskell-language-server (large; for an editor) | — |
   | `go` | go, gopls; `GOTOOLCHAIN=local` (go never fetches another toolchain) | `GOPATH`, `GOMODCACHE`, `GOCACHE` |

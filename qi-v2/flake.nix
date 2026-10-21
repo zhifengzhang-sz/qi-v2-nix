@@ -56,8 +56,9 @@
       # ~/.cache/<name>/, never to the host's defaults.
 
       # The TeX of the material's books, set as the book's editions are: ctex on LuaTeX (luatexja), TeX Gyre,
-      # Erewhon with its maths, Fourier, latexmk; and the fonts it sets (Source Han Serif SC and Sans SC,
-      # JuliaMono), with the two variables by which TeX and fontconfig find them. `package`, `fonts`: the parts.
+      # Erewhon with its maths, Fourier, latexmk, biber (biblatex's backend); and the fonts it sets (Source Han
+      # Serif SC and Sans SC, JuliaMono), with the two variables by which TeX and fontconfig find them. `package`,
+      # `fonts`: the parts.
       tex = pkgs:
         let
           fonts = pkgs.symlinkJoin {
@@ -65,7 +66,7 @@
             paths = with pkgs; [ source-han-serif source-han-sans julia-mono ];
           };
           package = pkgs.texliveMedium.withPackages (ps: with ps; [
-            collection-latexextra collection-langchinese luatexja erewhon erewhon-math fourier latexmk
+            collection-latexextra collection-langchinese luatexja erewhon erewhon-math fourier latexmk biber
           ]);
         in {
           inherit package fonts;
