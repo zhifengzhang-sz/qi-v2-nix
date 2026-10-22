@@ -20,7 +20,9 @@
       # also has what the person at it types in any project: clear (ncurses), and of the host `personTools`.
       # The host's tools are found on the host's path as the first entry found it (QI_HOST_PATH), so a shell
       # entered from inside another finds them too; each link is replaced by a rename, so a shell already open
-      # never finds one missing.
+      # never finds one missing. A pure shell's own links are never searched, so a shell entered from one that
+      # predates QI_HOST_PATH links no tool to itself; a tool it cannot find there keeps its link while the link
+      # still reaches the host.
       mkPureShell = pkgs: { name, packages ? [ ], uses ? [ ], hostTools ? [ ], needs ? [ ], env ? { }, greeting ? "", closing ? "" }:
         let
           # sudo (setuid, which the Nix store cannot hold), the editor and the agent, and wslpath, which the
@@ -40,11 +42,15 @@
             if [ -z "''${QI_HOST_PATH-}" ]; then export QI_HOST_PATH="$PATH"; fi
             host="$HOME/.cache/${name}/host-tools"
             mkdir -p "$host"
+            hp=$(printf '%s' "$QI_HOST_PATH" | tr ':' '\n' | grep -vx "$HOME/\.cache/[^/]*/host-tools" | paste -sd: -)
             for t in ${lib.escapeShellArgs allHostTools}; do
-              p=$(PATH="$QI_HOST_PATH"; command -v "$t") || p=
+              p=$(PATH="$hp"; command -v "$t") || p=
               case $p in
                 /*) ln -s "$p" "$host/.$t.$$" && mv -fT "$host/.$t.$$" "$host/$t" ;;
-                *) rm -f "$host/$t" ;;
+                *) case $(readlink "$host/$t" 2>/dev/null) in
+                     "$HOME"/.cache/*/host-tools/*|"") rm -f "$host/$t" ;;
+                     *) [ -e "$host/$t" ] || rm -f "$host/$t" ;;
+                   esac ;;
               esac
             done
             for l in "$host"/*; do
