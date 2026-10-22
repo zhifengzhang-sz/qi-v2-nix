@@ -16,9 +16,17 @@
       # stops (the owner, 2026-10-19: no fallback). The variables that would load the host's libraries or Python
       # packages are unset. `uses`: presets (below), whose packages, variables and hooks join the shell's. On entry
       # it says what it is, runs `greeting`, names each of `needs` the machine lacks (`on`: "any", "wsl" or
-      # "other"), runs `closing`, and marks the prompt with the name. `env`: the shell's variables.
+      # "other"), runs `closing`, and marks the prompt with the name. `env`: the shell's variables. Every shell
+      # also has what the person at it types in any project: clear (ncurses), and of the host `personTools`.
+      # The host's tools are found on the host's path as the first entry found it (QI_HOST_PATH), so a shell
+      # entered from inside another finds them too; each link is replaced by a rename, so a shell already open
+      # never finds one missing.
       mkPureShell = pkgs: { name, packages ? [ ], uses ? [ ], hostTools ? [ ], needs ? [ ], env ? { }, greeting ? "", closing ? "" }:
         let
+          # sudo (setuid, which the Nix store cannot hold), the editor and the agent, and wslpath, which the
+          # editor's WSL launcher needs
+          personTools = [ "sudo" "code" "claude" "wslpath" ];
+          allHostTools = lib.unique (hostTools ++ personTools);
           need = n:
             let line = ''__pure_need ${lib.escapeShellArg n.tool} ${lib.escapeShellArg n.by}'';
             in if (n.on or "any") == "wsl" then ''if [ -n "''${WSL_DISTRO_NAME-}" ]; then ${line}; fi''
@@ -26,20 +34,31 @@
             else line;
           presetEnv = lib.foldl' (a: u: a // (u.env or { })) { } uses;
         in pkgs.mkShell (presetEnv // env // {
-          packages = packages ++ lib.concatMap (u: u.packages or [ ]) uses;
+          packages = [ pkgs.ncurses ] ++ packages ++ lib.concatMap (u: u.packages or [ ]) uses;
           shellHook = ''
             export QI_SHELL_NAME=${lib.escapeShellArg name}
+            if [ -z "''${QI_HOST_PATH-}" ]; then export QI_HOST_PATH="$PATH"; fi
             host="$HOME/.cache/${name}/host-tools"
-            mkdir -p "$host" && rm -f "$host"/*
-            for t in ${lib.escapeShellArgs hostTools}; do
-              p=$(command -v "$t") && ln -s "$p" "$host/$t"
+            mkdir -p "$host"
+            for t in ${lib.escapeShellArgs allHostTools}; do
+              p=$(PATH="$QI_HOST_PATH"; command -v "$t") || p=
+              case $p in
+                /*) ln -s "$p" "$host/.$t.$$" && mv -fT "$host/.$t.$$" "$host/$t" ;;
+                *) rm -f "$host/$t" ;;
+              esac
+            done
+            for l in "$host"/*; do
+              case " ${lib.concatStringsSep " " allHostTools} " in
+                *" ''${l##*/} "*) ;;
+                *) rm -f "$l" ;;
+              esac
             done
             PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep '^/nix/store/' | paste -sd: -):$host"
             export PATH
             unset PYTHONPATH PYTHONHOME LD_LIBRARY_PATH LD_PRELOAD
             ${lib.concatMapStrings (u: u.hook or "") uses}
             echo "${name}: this project's shell: every tool from the flake; of the host only:"
-            echo "${name}:   ${lib.concatStringsSep " " hostTools}; exit leaves it"
+            echo "${name}:   ${lib.concatStringsSep " " allHostTools}; exit leaves it"
             ${greeting}
             __pure_need() {
               if [ ! -e "$host/$1" ]; then echo "${name}: $1 is not on this machine: needed by $2"; fi

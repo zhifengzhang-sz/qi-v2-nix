@@ -20,7 +20,11 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
 
 - **`lib.mkPureShell pkgs { … }`**: the shell's path holds the flake's tools and, of the host, only `hostTools`; any
   other command is not found, and the run stops. On entry it says what it is, names each of `needs` the machine
-  lacks with what needs it, and marks the prompt with the name.
+  lacks with what needs it, and marks the prompt with the name. Every shell also has what the person at it types
+  in any project: `clear` (ncurses), and of the host `sudo` (setuid, which the Nix store cannot hold), `code`,
+  `claude` and `wslpath` (which `code`'s WSL launcher needs). The host's tools are found on the host's path as
+  the first entry found it, so a shell entered from inside another (`nix develop` in `nix develop`, one project's
+  shell from another's) finds them too; each link is replaced by a rename, so a shell already open never loses one.
 - **The presets**, each `pkgs` → `{ packages; env; hook; }`, for `uses`; their caches go under `~/.cache/<name>/`:
 
   | Preset | Tools | Caches |
