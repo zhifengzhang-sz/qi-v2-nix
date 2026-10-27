@@ -12,5 +12,9 @@ A project at one commit of this repository has the same tools as every other pro
 one is taken by `nix flake update qi-v2 kit` in the project. Needs Nix 2.26 or later (the kit's input `../qi-v2`
 is a relative path within this repository).
 
+How every project takes its inputs and publishes its code and data (inputs, locks, releases, private data on
+GHCR, the binary cache, docs and decisions): `practices.md`. The rules behind them are the kit's shared rules,
+`kit/src/rules.md`.
+
 The kit's own checks, in a shell with Bun: `cd kit && bun install --frozen-lockfile && bun run check && bun run
 typecheck && bun run test`.

@@ -66,20 +66,80 @@ export const everyRole = (file: string, rules: string): Result<string> => {
     : ok(m[1].trim());
 };
 
+// A rules file's sections by their `## ` headings, after its preamble.
+const sectionsOf = (text: string) => {
+  const [preamble = "", ...rest] = text.split(/^## /m);
+  return {
+    preamble: preamble.trim(),
+    sections: rest.map((part) => {
+      const nl = part.indexOf("\n");
+      return {
+        heading: (nl < 0 ? part : part.slice(0, nl)).trim(),
+        body: nl < 0 ? "" : part.slice(nl + 1).trim(),
+      };
+    }),
+  };
+};
+
+// a rules text's rules: its lines that open a list item
+const items = (text: string): readonly string[] =>
+  text
+    .split("\n")
+    .filter((l) => l.startsWith("- "))
+    .map((l) => l.trim());
+
+// The project's rules with the kit's: in each section the kit's rules first, then the project's own; a section of
+// the kit's that the project lacks comes after the project's sections. The kit's preamble stays the kit's.
+export const mergeRules = (shared: string, project: string): string => {
+  const s = sectionsOf(shared);
+  const p = sectionsOf(project);
+  const theirs = (heading: string) => s.sections.find((x) => x.heading === heading)?.body;
+  const sections = p.sections.map((x) => {
+    const sh = theirs(x.heading);
+    return sh === undefined
+      ? `## ${x.heading}\n\n${x.body}`
+      : `## ${x.heading}\n\n**Shared by every project** (the kit's \`rules.md\`):\n\n${sh}\n\n**This project's own:**\n\n${x.body}`;
+  });
+  const only = s.sections
+    .filter((x) => !p.sections.some((y) => y.heading === x.heading))
+    .map((x) => `## ${x.heading}\n\n${x.body}`);
+  return [p.preamble, ...sections, ...only].filter((t) => t !== "").join("\n\n");
+};
+
+// the project's rules that the kit already has, word for word: a rule has one home
+const repeated = (shared: string, project: string): readonly string[] => {
+  const theirs = new Set(items(shared));
+  return items(project).filter((r) => theirs.has(r));
+};
+
 export type SpecFiles = {
   readonly rules: { readonly file: string; readonly text: string };
+  // the kit's own rules, shared by every project (src/rules.md); none where a caller gives none
+  readonly shared?: { readonly file: string; readonly text: string };
   readonly roles: readonly { readonly file: string; readonly text: string }[];
   readonly processes: readonly { readonly file: string; readonly text: string }[];
 };
 
-export const readSpec = (files: SpecFiles): Result<Spec, KitError> =>
-  chain((every: string) =>
-    chain((roles: readonly Role[]) =>
-      chain(
-        (processes: readonly Process[]): Result<Spec> =>
+export const readSpec = (files: SpecFiles): Result<Spec, KitError> => {
+  const shared = files.shared?.text ?? "";
+  const twice = repeated(shared, files.rules.text);
+  const rules = shared === "" ? files.rules.text.trim() : mergeRules(shared, files.rules.text);
+  return twice.length > 0
+    ? err(
+        kitError(
+          "SPEC_INVALID",
+          files.rules.file,
+          `rules the kit already has (${files.shared?.file}), each to be kept there only: ${twice.map((r) => r.slice(0, 60)).join("; ")}`,
+        ),
+      )
+    : chain((every: string) =>
+        chain((roles: readonly Role[]) =>
           chain(
-            (): Result<Spec> => ok({ rules: files.rules.text.trim(), everyRole: every, roles, processes }),
-          )(roleProblems(roles, processes)),
-      )(all(files.processes.map((f) => readProcess(f.file, f.text)))),
-    )(all(files.roles.map((f) => readRole(f.file, f.text)))),
-  )(everyRole(files.rules.file, files.rules.text));
+            (processes: readonly Process[]): Result<Spec> =>
+              chain((): Result<Spec> => ok({ rules, everyRole: every, roles, processes }))(
+                roleProblems(roles, processes),
+              ),
+          )(all(files.processes.map((f) => readProcess(f.file, f.text)))),
+        )(all(files.roles.map((f) => readRole(f.file, f.text)))),
+      )(everyRole(files.rules.file, rules));
+};

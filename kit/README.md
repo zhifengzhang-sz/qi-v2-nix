@@ -11,11 +11,17 @@ A project's `agents/` is its spec of the work agents do on it, in no tool's term
 - `kit hook start|stop`: the check run by the Copilot CLI's hooks, `.github/hooks/kit.json`, which `kit generate` writes with the Copilot files: on `subagentStart` and `subagentStop` the CLI hands the hook a JSON object whose `agentName` is the role's name and `agentId` its run's (`notes/copilot.md`, Tried in the CLI, the payload). The run is recorded under its id on start and judged on stop, as by hand, except a `brief-files` role, whose changes are listed and not judged (a hook does not know the brief). On a role's stop, the hook also writes its validated staging record, `agents.run/<agentId>.run.json`, and the response it names. It records the role, Copilot kind, effort, role brief and changed paths; the hook payload does not give the resolved model, family or token count, so those are explicitly `not reported` until the session supplies `/usage` or OpenTelemetry evidence before attaching the record to a ledger run. Every outcome is a line in `agents.run/log`: the time, the run's id, start or stop, a status word (`RECORDED`, `PASS`, `FAIL`, `LISTED`, `SKIPPED` for a subagent that is no role, `ERROR` for an input or a spec it could not read), then the lines; the hook exits 0 whatever happened, so it never stops the CLI. Two runs at once keep their own records, but their changes mix, the work tree being one. The CLI loads the hooks only in a trusted folder, once `make agents` has written them.
 - In the project: `make agents` runs `kit generate`; `make run-start` and `make run-check` the two above.
 
+## Changes
+
+- **0.2.0**: the kit's shared rules (`src/rules.md`), merged into every project's `AGENTS.md` and each role's Every
+  role, the kit's first; a project rule repeating a shared one is refused.
+- **0.1.0**: the format and the generator.
+
 ## What `agents/` holds
 
 | Path | Holds | Generated into (Claude Code; Copilot) |
 |---|---|---|
-| `rules.md` | the project's standing rules, two sections: **The session** (whoever drives the work, of any kind) and **Every role** (every agent a role runs as) | `AGENTS.md` (the rules) and `CLAUDE.md` (a pointer to `AGENTS.md`); the section Every role also into each role's file |
+| `rules.md` | the project's own standing rules, two sections: **The session** (whoever drives the work, of any kind) and **Every role** (every agent a role runs as); the rules shared by every project are the kit's (`src/rules.md`, the package's `rules.md`), and a project rule that repeats one of them word for word is refused | `AGENTS.md` (the rules: in each section the kit's shared rules first, then the project's own) and `CLAUDE.md` (a pointer to `AGENTS.md`); the section Every role, the kit's and the project's, also into each role's file |
 | `roles/<role>.md` | one role, self-contained: front matter, then its brief | `.claude/agents/<role>.md`; `.github/agents/<role>.agent.md` |
 | `stages/<process>.json` | one process's stages | `.claude/workflows/<process>.js`; for Copilot, by hand in order (its workflows are a preview) |
 

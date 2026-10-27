@@ -44,7 +44,7 @@
           };
           kit = pkgs.stdenvNoCC.mkDerivation {
             pname = "kit";
-            version = "0.1.0";
+            version = "0.2.0";
             inherit src;
             nativeBuildInputs = [ pkgs.bun pkgs.makeWrapper ];
             dontConfigure = true;
@@ -57,6 +57,7 @@
               mkdir -p $out/bin $out/lib
               cp kit.js $out/lib/
               cp -r README.md notes $out/
+              cp src/rules.md $out/rules.md
               makeWrapper ${pkgs.bun}/bin/bun $out/bin/kit --add-flags $out/lib/kit.js
             '';
           };

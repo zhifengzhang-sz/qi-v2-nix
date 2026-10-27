@@ -78,13 +78,18 @@ const listed = async (root: string, dir: string, ext: string): Promise<Result<re
       : r;
 };
 
+// the kit's own rules: src/rules.md beside src/edge/, or the package's rules.md beside lib/kit.js
+const KIT = join(import.meta.dirname, "..");
+
 const readFiles = async (root: string): Promise<Result<SpecFiles>> => {
-  const [rules, roleNames, processNames] = await Promise.all([
+  const [rules, shared, roleNames, processNames] = await Promise.all([
     text(root, "agents/rules.md"),
+    text(KIT, "rules.md"),
     listed(root, "agents/roles", ".md"),
     listed(root, "agents/stages", ".json"),
   ]);
   if (!rules.ok) return rules;
+  if (!shared.ok) return shared;
   if (!roleNames.ok) return roleNames;
   if (!processNames.ok) return processNames;
   const [roles, processes] = await Promise.all([
@@ -93,7 +98,7 @@ const readFiles = async (root: string): Promise<Result<SpecFiles>> => {
   ]);
   if (!roles.ok) return roles;
   if (!processes.ok) return processes;
-  return ok({ rules: rules.value, roles: roles.value, processes: processes.value });
+  return ok({ rules: rules.value, shared: shared.value, roles: roles.value, processes: processes.value });
 };
 
 const localModels = async (root: string): Promise<Result<CopilotModels>> => {

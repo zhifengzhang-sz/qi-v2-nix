@@ -23,6 +23,41 @@ const spec = (): Spec => {
 const fileOf = (fs: readonly { path: string; text: string }[], path: string): string =>
   fs.find((f) => f.path === path)?.text ?? expect.fail(`no ${path}`);
 
+describe("the shared rules", () => {
+  const shared = {
+    file: "rules.md",
+    text: "# Shared\n\nThe kit's.\n\n## The session\n\n- A shared session rule.\n\n## Every role\n\n- A shared role rule.\n\n## Only the kit's\n\n- A rule of a section the project lacks.\n",
+  };
+  const withShared = readSpec({ ...files, shared });
+  const merged = (): Spec => {
+    if (!withShared.ok) expect.fail(withShared.error.message);
+    return withShared.value;
+  };
+  it("puts the kit's rules first in each section, then the project's own", () => {
+    const r = merged().rules;
+    expect(r.indexOf("A shared role rule.")).toBeLessThan(r.indexOf("Each fact has one home."));
+    expect(r).toContain("**This project's own:**");
+    expect(r).not.toContain("The kit's.");
+  });
+  it("gives every role both, the kit's first", () => {
+    const e = merged().everyRole;
+    expect(e.indexOf("A shared role rule.")).toBeLessThan(e.indexOf("Each fact has one home."));
+  });
+  it("keeps a section only the kit has, after the project's", () => {
+    expect(merged().rules).toContain("## Only the kit's\n\n- A rule of a section the project lacks.");
+  });
+  it("refuses a project rule the kit already has, word for word", () => {
+    const r = readSpec({
+      ...files,
+      shared: { ...shared, text: `${shared.text}\n- Each fact has one home.\n` },
+    });
+    expect(r.ok ? "" : r.error.message).toContain("rules the kit already has");
+  });
+  it("without the kit's rules, the project's as they are", () => {
+    expect(spec().rules).not.toContain("Shared by every project");
+  });
+});
+
 describe("the spec", () => {
   it("decodes the fixture, Every role taken from the rules", () => {
     expect(spec().roles.map((r) => r.front.name)).toEqual(["reader"]);
