@@ -6,8 +6,18 @@ const lock = JSON.stringify({
   root: "root",
   version: 7,
   nodes: {
-    root: { inputs: { kit: "kit", nixpkgs: "nixpkgs", tool: "tool", local: "local", pinned: "pinned" } },
+    root: {
+      inputs: {
+        kit: "kit",
+        nixpkgs: "nixpkgs",
+        tool: "tool",
+        local: "local",
+        pinned: "pinned",
+        shared: ["kit", "nixpkgs"],
+      },
+    },
     kit: {
+      inputs: { nixpkgs: "nixpkgs" },
       locked: { rev: "a".repeat(40), type: "github" },
       original: { type: "github", owner: "o", repo: "r", dir: "kit" },
     },
@@ -32,9 +42,10 @@ const named = (n: string): Input => inputs().find((i) => i.name === n) ?? expect
 
 describe("kit locks", () => {
   it("reads the root's inputs, each with its source, branch, locked commit and folder", () => {
-    expect(inputs().map((i) => i.name)).toEqual(["kit", "local", "nixpkgs", "pinned", "tool"]);
+    expect(inputs().map((i) => i.name)).toEqual(["kit", "local", "nixpkgs", "pinned", "shared", "tool"]);
     expect(named("kit")).toEqual({
       name: "kit",
+      through: null,
       url: "https://github.com/o/r",
       ref: "HEAD",
       rev: null,
@@ -51,6 +62,13 @@ describe("kit locks", () => {
   it("says outdated, with the update, where the head moved", () => {
     expect(lineOf(named("nixpkgs"), "d".repeat(40), null)).toContain("outdated");
     expect(lineOf(named("nixpkgs"), "d".repeat(40), null)).toContain("nix flake update nixpkgs");
+  });
+  it("names where an input that follows another's is updated: in the lock it comes through", () => {
+    expect(named("shared").through).toEqual(["kit", "nixpkgs"]);
+    expect(named("shared").locked).toBe("b".repeat(40));
+    expect(lineOf(named("shared"), "d".repeat(40), null)).toContain(
+      "it comes through kit: updated in its lock, then nix flake update kit",
+    );
   });
   it("judges a folder input by its folder: current where the folder did not change", () => {
     expect(lineOf(named("kit"), "d".repeat(40), 0)).toContain("its repository moved, kit/ not");

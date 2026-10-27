@@ -1,6 +1,6 @@
 {
   "name": "@qi/kit",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "description": "The kit: a project's agents/ spec into each kind's files (Claude Code, Copilot); dev/kit/README.md",
