@@ -23,6 +23,8 @@
       # never finds one missing. A pure shell's own links are never searched, so a shell entered from one that
       # predates QI_HOST_PATH links no tool to itself; a tool it cannot find there keeps its link while the link
       # still reaches the host.
+      # Its path is its own: the path it inherited (nix_saved_PATH) is cut off, so a shell entered from inside another
+      # keeps none of the other's tools.
       mkPureShell = pkgs: { name, packages ? [ ], uses ? [ ], hostTools ? [ ], needs ? [ ], env ? { }, greeting ? "", closing ? "" }:
         let
           # sudo (setuid, which the Nix store cannot hold), the editor and the agent, and wslpath, which the
@@ -59,7 +61,16 @@
                 *) rm -f "$l" ;;
               esac
             done
-            PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep '^/nix/store/' | paste -sd: -):$host"
+            # the shell's own entries only: nix develop (and nix-direnv) put the path it inherited, nix_saved_PATH,
+            # after the shell's, so a shell entered from inside another would otherwise keep the other's tools
+            own="$PATH"
+            if [ -n "''${nix_saved_PATH-}" ]; then
+              case "$PATH" in
+                *":$nix_saved_PATH") own="''${PATH%":$nix_saved_PATH"}" ;;
+                *) echo "${name}: the inherited path is not at the end of PATH: this shell may hold another shell's tools" >&2 ;;
+              esac
+            fi
+            PATH="$(printf '%s' "$own" | tr ':' '\n' | grep '^/nix/store/' | paste -sd: -):$host"
             export PATH
             unset PYTHONPATH PYTHONHOME LD_LIBRARY_PATH LD_PRELOAD
             ${lib.concatMapStrings (u: u.hook or "") uses}
