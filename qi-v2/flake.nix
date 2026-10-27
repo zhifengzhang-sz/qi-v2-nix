@@ -186,7 +186,48 @@ export GOMODCACHE="$GOPATH/pkg/mod" GOCACHE="$HOME/.cache/$QI_SHELL_NAME/go-buil
           hook = ''export LAKE_CACHE_DIR="$HOME/.cache/$QI_SHELL_NAME/lake"
 '';
         };
+      # A released product as an image: the operating system under it, the same for every project, is Ubuntu 24.04
+      # pinned by its digest (x86_64-linux), so every release starts from the same system; the product, built by
+      # Nix, comes in with its run-time closure as the image's entrypoint (not as `contents`, whose own /bin and /lib
+      # would hide Ubuntu's). It runs as Ubuntu's ordinary user (1000) in /work, made in the image and owned by it
+      # (a taker mounts its folder there). The label org.opencontainers.image.source connects the package on GHCR to
+      # its repository; whether it inherits the repository's access is the package's own setting on GitHub.
+      # `docker load < result`; then, with a token that can write packages (`docker login ghcr.io`),
+      # `docker push ghcr.io/zhifengzhang-sz/<name>:<version>`. A system other than x86_64-linux stops; a package
+      # that names no program (meta.mainProgram) stops, unless `entrypoint` is given.
+      ubuntuBase = pkgs:
+        if pkgs.stdenv.hostPlatform.system != "x86_64-linux"
+        then throw "qi-v2 releaseImage: Ubuntu's base is pinned for x86_64-linux only (qi-v2/flake.nix, ubuntuBase)"
+        else pkgs.dockerTools.pullImage {
+          imageName = "ubuntu";
+          imageDigest = "sha256:24737cef17f4e22b1977df7d9a05e77c4e28b7da5b8911f8d8ccda136bf3573c";
+          hash = "sha256-iG4eCyKIXExf/F4n0jBsHMazCsJeZCS3VtSGxFrR1yo=";
+          finalImageName = "ubuntu";
+          finalImageTag = "24.04";
+        };
+      releaseImage = pkgs: { name, version, package, source, entrypoint ? null }:
+        let
+          entry =
+            if entrypoint != null then entrypoint
+            else if package.meta ? mainProgram then [ (lib.getExe package) ]
+            else throw "qi-v2 releaseImage: ${name}'s package names no program (meta.mainProgram): give entrypoint";
+        in pkgs.dockerTools.buildLayeredImage {
+          name = "ghcr.io/zhifengzhang-sz/${name}";
+          tag = version;
+          fromImage = ubuntuBase pkgs;
+          fakeRootCommands = "mkdir -p work && chown 1000:1000 work";
+          config = {
+            User = "1000:1000";
+            WorkingDir = "/work";
+            Entrypoint = entry;
+            Labels = {
+              "org.opencontainers.image.source" = source;
+              "org.opencontainers.image.version" = version;
+            };
+          };
+        };
+
     in {
-      lib = { inherit mkPureShell tex haskell haskellLsp go rust cpp lean; };
+      lib = { inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
     };
 }

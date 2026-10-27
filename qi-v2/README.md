@@ -37,6 +37,8 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
   | `cpp` | cmake, ninja, pkg-config (the compiler is the shell's own, gcc) | — |
   | `lean` | Lean 4's release 4.35.0-rc3, `lean` and `lake`, from Lean's own archive by its hash, in place of elan (which fetched it into `~/.elan` at a first build, outside the store and the lock); linking with the store's C compiler (`LEAN_CC`), as nixpkgs' elan does; x86_64-linux only, any other system stopping with its name. A Lake project's `lean-toolchain` names the same version, which the project checks | `LAKE_CACHE_DIR` |
 
+- **`releaseImage`**, a released product as an image (`qi-v2.lib.releaseImage pkgs { name, version, package, source, entrypoint ? }`): the operating system under it, the same for every project, Ubuntu 24.04 pinned by its digest (x86_64-linux only); the product built by Nix comes in with its run-time closure as the image's entrypoint (`meta.mainProgram`, or `entrypoint` given), Ubuntu's own files untouched; it runs as Ubuntu's ordinary user (1000) in `/work`, made in the image and owned by it, where a taker mounts its folder. The label `org.opencontainers.image.source` connects the package on GHCR to its repository; whether it inherits the repository's access is the package's own setting on GitHub. A release: `nix build` the image, `docker load < result`, then with a token that can write packages (`docker login ghcr.io`) `docker push ghcr.io/zhifengzhang-sz/<name>:<version>`; a taker, `docker run --rm -v "$PWD":/work ghcr.io/zhifengzhang-sz/<name>:<version> …`.
+
 A version other than the one nixpkgs a project needs is its own explicit input, in its own flake.
 
 A newer qi-v2 is taken by `nix flake update qi-v2` in the project; its lock then names the new commit.
