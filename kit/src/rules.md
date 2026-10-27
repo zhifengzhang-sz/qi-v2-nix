@@ -3,7 +3,8 @@
 The kit's own rules, about how the work is done, true of any project that takes the kit. `make agents` puts them
 into every project's `AGENTS.md`, each section's shared rules before the project's own, and Every role into each
 role's file. A project's `agents/rules.md` holds only what is its own; a rule here is changed here, for every
-project.
+project. The rules name what a project taking them has (the kit's README, What the shared rules assume); the kit does
+not install or check it.
 
 ## The session
 

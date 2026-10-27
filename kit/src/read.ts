@@ -81,12 +81,13 @@ const sectionsOf = (text: string) => {
   };
 };
 
-// a rules text's rules: its lines that open a list item
+// a rules text's rules: each list item whole, its lines after the first (indented) joined to it, every run of
+// spaces one, so that a rule wrapped otherwise is the same rule
 const items = (text: string): readonly string[] =>
   text
-    .split("\n")
+    .split(/\n(?=- |\S)/)
     .filter((l) => l.startsWith("- "))
-    .map((l) => l.trim());
+    .map((l) => l.replace(/\s+/g, " ").trim());
 
 // The project's rules with the kit's: in each section the kit's rules first, then the project's own; a section of
 // the kit's that the project lacks comes after the project's sections. The kit's preamble stays the kit's.

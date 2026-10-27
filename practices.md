@@ -6,15 +6,16 @@ the reasons.
 
 ## 1. Everything from outside is a flake input
 
-- Every library, tool, or other project's product is an input in `flake.nix`; `flake.lock` is the one record of
-  which version is used, written by Nix.
+- Every Nix package, tool, or other project's product is an input in `flake.nix`; `flake.lock` is the one record
+  of which version is used, written by Nix. A language's own dependencies keep the language's lock (`bun.lock`,
+  `lean-toolchain` and `lake-manifest.json`), committed beside it; Nix gives the tools that read them.
 - A newer version: `nix flake update NAME`, then commit `flake.lock`.
 - Another of our projects (they are private) is pinned by SSH:
   `inputs.materials.url = "git+ssh://git@github.com/zhifengzhang-sz/qi-v2-chanlun-materials";`
 - Its packages are run at the project's own pin: `nix run --inputs-from . materials#NAME`, never `github:…#NAME`
   (that takes the default branch, not the pin).
 
-Why: one lock, so every machine and every person builds the same thing.
+Why: one lock for what Nix gives, so every machine and every person builds the same thing.
 
 ## 2. A lock is outdated when its source has moved past it
 
@@ -42,7 +43,8 @@ Why: a lock pins a version, and nothing else says when the source has gone on.
 - "Lock" means pinned, not frozen: a new version rewrites it, and committing it is the release.
 - Installing takes the files out with crane, as the person, adds them to the Nix store, and the flake's package
   finds each by its hash. An asset already in the store is not fetched again, so a new version costs only the
-  assets that changed: data that changes often (market data) has assets of its own.
+  assets that changed. So data that changes often (market data) is to have assets of its own; in
+  `qi-v2-chanlun-materials` it does not yet (its market data is in one asset with the rest).
 
 Why: GHCR gives access by each person's own GitHub login, with no key to hand out. Nix cannot fetch from GHCR
 itself, since its downloads run as its daemon, without the person's login: so crane fetches, and the lock tells Nix

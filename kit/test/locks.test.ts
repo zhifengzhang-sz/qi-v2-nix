@@ -6,7 +6,7 @@ const lock = JSON.stringify({
   root: "root",
   version: 7,
   nodes: {
-    root: { inputs: { kit: "kit", nixpkgs: "nixpkgs", tool: "tool", local: "local" } },
+    root: { inputs: { kit: "kit", nixpkgs: "nixpkgs", tool: "tool", local: "local", pinned: "pinned" } },
     kit: {
       locked: { rev: "a".repeat(40), type: "github" },
       original: { type: "github", owner: "o", repo: "r", dir: "kit" },
@@ -17,6 +17,10 @@ const lock = JSON.stringify({
     },
     tool: { locked: { rev: "c".repeat(40), type: "git" }, original: { type: "git", url: "ssh://git@h/x" } },
     local: { locked: { type: "path" }, original: { type: "path", path: "./x" } },
+    pinned: {
+      locked: { rev: "e".repeat(40), type: "github" },
+      original: { type: "github", owner: "o", repo: "p", rev: "e".repeat(40) },
+    },
   },
 });
 const inputs = (): readonly Input[] => {
@@ -28,11 +32,12 @@ const named = (n: string): Input => inputs().find((i) => i.name === n) ?? expect
 
 describe("kit locks", () => {
   it("reads the root's inputs, each with its source, branch, locked commit and folder", () => {
-    expect(inputs().map((i) => i.name)).toEqual(["kit", "local", "nixpkgs", "tool"]);
+    expect(inputs().map((i) => i.name)).toEqual(["kit", "local", "nixpkgs", "pinned", "tool"]);
     expect(named("kit")).toEqual({
       name: "kit",
       url: "https://github.com/o/r",
       ref: "HEAD",
+      rev: null,
       locked: "a".repeat(40),
       dir: "kit/",
     });
@@ -50,6 +55,10 @@ describe("kit locks", () => {
   it("judges a folder input by its folder: current where the folder did not change", () => {
     expect(lineOf(named("kit"), "d".repeat(40), 0)).toContain("its repository moved, kit/ not");
     expect(lineOf(named("kit"), "d".repeat(40), 2)).toContain("kit/ changed");
+  });
+  it("does not ask an input the flake pins to a commit (?rev=): its branch moving does not outdate it", () => {
+    expect(lineOf(named("pinned"), "f".repeat(40), null)).toContain("pinned");
+    expect(lineOf(named("pinned"), "f".repeat(40), null)).not.toContain("outdated");
   });
   it("does not ask an input that is not git or GitHub", () => {
     expect(lineOf(named("local"), null, null)).toContain("not asked");

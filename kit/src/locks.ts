@@ -5,12 +5,14 @@ import { parseDocument } from "yaml";
 import { z } from "zod";
 import { err, kitError, ok, type Result } from "./result.ts";
 
-// an input of the root, as git can ask its source: the repository, the branch it follows, the commit locked, and
-// the folder it is taken from, where it is taken from one
+// an input of the root, as git can ask its source: the repository, the branch or tag it follows, the commit the
+// flake itself names (`?rev=`, a pin no source moves), the commit locked, and the folder it is taken from, where it is
+// taken from one
 export type Input = {
   readonly name: string;
   readonly url: string | null;
   readonly ref: string;
+  readonly rev: string | null;
   readonly locked: string | null;
   readonly dir: string | null;
 };
@@ -21,6 +23,7 @@ const Original = z.looseObject({
   repo: z.string().optional(),
   url: z.string().optional(),
   ref: z.string().optional(),
+  rev: z.string().optional(),
   dir: z.string().optional(),
 });
 const Lock = z.looseObject({
@@ -62,6 +65,7 @@ export const inputsOf = (text: string): Result<readonly Input[]> => {
           name,
           url: source(o),
           ref: o?.ref ?? "HEAD",
+          rev: o?.rev ?? null,
           locked: node?.locked?.rev ?? null,
           dir: o?.dir === undefined ? null : `${o.dir.replace(/\/+$/, "")}/`,
         };
@@ -69,15 +73,17 @@ export const inputsOf = (text: string): Result<readonly Input[]> => {
   );
 };
 
-// an input's line, given its source's head and, for an input taken from a folder, how many of the files changed
-// since the locked commit are in that folder
+// an input's line, given the commit its branch or tag is at and, for an input taken from a folder, how many of the
+// files changed since the locked commit are in that folder
 export const lineOf = (i: Input, head: string | null, inFolder: number | null): string =>
   i.url === null || i.locked === null
     ? `flake.lock ${i.name}: not asked (not a git or GitHub input)`
-    : head === i.locked
-      ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
-      : i.dir !== null && inFolder === 0
-        ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
-        : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
-            i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
-          }: nix flake update ${i.name}`;
+    : i.rev !== null
+      ? `flake.lock ${i.name}: pinned (${i.rev.slice(0, 10)}, the flake's ?rev=): not asked; flake.nix changes it`
+      : head === i.locked
+        ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
+        : i.dir !== null && inFolder === 0
+          ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
+          : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
+              i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
+            }: nix flake update ${i.name}`;

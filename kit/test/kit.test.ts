@@ -53,6 +53,20 @@ describe("the shared rules", () => {
     });
     expect(r.ok ? "" : r.error.message).toContain("rules the kit already has");
   });
+  it("refuses it wrapped otherwise: a rule is its whole item", () => {
+    const r = readSpec({
+      ...files,
+      shared: { ...shared, text: `${shared.text}\n- Each fact\n  has one home.\n` },
+    });
+    expect(r.ok ? "" : r.error.message).toContain("rules the kit already has");
+  });
+  it("takes a rule whose first line only is the kit's as the project's own", () => {
+    const r = readSpec({
+      ...files,
+      shared: { ...shared, text: `${shared.text}\n- Each fact has one home.\n  And one more.\n` },
+    });
+    expect(r.ok).toBe(true);
+  });
   it("without the kit's rules, the project's as they are", () => {
     expect(spec().rules).not.toContain("Shared by every project");
   });

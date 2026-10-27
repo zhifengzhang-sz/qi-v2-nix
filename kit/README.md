@@ -11,11 +11,29 @@ A project's `agents/` is its spec of the work agents do on it, in no tool's term
 - `kit hook start|stop`: the check run by the Copilot CLI's hooks, `.github/hooks/kit.json`, which `kit generate` writes with the Copilot files: on `subagentStart` and `subagentStop` the CLI hands the hook a JSON object whose `agentName` is the role's name and `agentId` its run's (`notes/copilot.md`, Tried in the CLI, the payload). The run is recorded under its id on start and judged on stop, as by hand, except a `brief-files` role, whose changes are listed and not judged (a hook does not know the brief). On a role's stop, the hook also writes its validated staging record, `agents.run/<agentId>.run.json`, and the response it names. It records the role, Copilot kind, effort, role brief and changed paths; the hook payload does not give the resolved model, family or token count, so those are explicitly `not reported` until the session supplies `/usage` or OpenTelemetry evidence before attaching the record to a ledger run. Every outcome is a line in `agents.run/log`: the time, the run's id, start or stop, a status word (`RECORDED`, `PASS`, `FAIL`, `LISTED`, `SKIPPED` for a subagent that is no role, `ERROR` for an input or a spec it could not read), then the lines; the hook exits 0 whatever happened, so it never stops the CLI. Two runs at once keep their own records, but their changes mix, the work tree being one. The CLI loads the hooks only in a trusted folder, once `make agents` has written them.
 - In the project: `make agents` runs `kit generate`; `make run-start` and `make run-check` the two above.
 
+## What the shared rules assume
+
+The shared rules (`src/rules.md`) name what a project that takes them has; the kit gives the agents' files and
+`kit run-start`, `kit run-check`, `kit hook` and `kit locks`, and neither installs nor checks the rest:
+
+- roles in `agents/roles/`, `checker` among them (it runs the checks), and a reviewing role for "the other model";
+- `make agents`, `make verify` (the checks for what is staged) and `make install` (the pre-commit hook that runs it),
+  `make run-start` and `make run-check` (the kit's two), `make locks-check` (`kit locks`, and the project's own locks);
+- `.reports/`, ignored by git;
+- `docs/opening.md`, `docs/milestones.md`, `docs/designs/`, `docs/decisions.md`;
+- the project's secret, named in its own `agents/rules.md`.
+
 ## Changes
+
+- **0.3.1**: `kit locks`: an input the flake pins to a commit (`?rev=`) is pinned, not asked (it was judged by its
+  branch's head); an input that follows a tag (`?ref=<tag>`) is asked by the tag's commit (it was asked as a branch,
+  and not found); the folder compare's need of the GitHub CLI's login said. A repeated rule is found by its whole
+  item, wrapped as it may be (it was by its first line). What the shared rules assume, listed here.
 
 - **0.3.0**: `kit locks [--root DIR]`: each input of the project's `flake.lock` against its source (`git
   ls-remote`, a private GitHub repository asked again by SSH), an input taken from a folder (`?dir=`) judged by that
-  folder (GitHub's compare, `gh`): current, or outdated with `nix flake update NAME`. Changes nothing.
+  folder (GitHub's compare, `gh`, logged in: SSH alone does not reach it): current, or outdated with `nix flake
+  update NAME`. Changes nothing.
 - **0.2.0**: the kit's shared rules (`src/rules.md`), merged into every project's `AGENTS.md` and each role's Every
   role, the kit's first; a project rule repeating a shared one is refused.
 - **0.1.0**: the format and the generator.

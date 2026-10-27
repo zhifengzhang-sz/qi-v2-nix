@@ -1,6 +1,7 @@
 // kit locks: each input of flake.lock against its source (locks.ts), by git ls-remote (a private GitHub repository
-// asked again by SSH, as the machine reads it) and, for an input taken from a folder, GitHub's compare (gh). Changes
-// nothing.
+// asked again by SSH, as the machine reads it) and, for an input taken from a folder, GitHub's compare by the GitHub
+// CLI, logged in (`gh auth login`): SSH alone does not reach it, and without it the run stops with gh's message.
+// Changes nothing.
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,18 +22,21 @@ const run = (cmd: string, args: readonly string[]): Result<string> => {
       );
 };
 
-// the commit a branch is at
+// the commit a branch or a tag is at: a tag's commit (an annotated tag's `^{}`) first, then a branch's
 const head = (i: Input): Result<string> => {
-  const ref = i.ref === "HEAD" ? "HEAD" : `refs/heads/${i.ref}`;
-  const asked = (url: string) => run("git", ["ls-remote", url, ref]);
+  const refs =
+    i.ref === "HEAD" ? ["HEAD"] : [`refs/tags/${i.ref}^{}`, `refs/tags/${i.ref}`, `refs/heads/${i.ref}`];
+  const asked = (url: string) => run("git", ["ls-remote", url, ...refs]);
   const first = asked(i.url ?? "");
   const gh = /^https:\/\/github\.com\/(.+?)(?:\.git)?$/.exec(i.url ?? "");
   const r = first.ok || gh === null ? first : asked(`git@github.com:${gh[1]}.git`);
   if (!r.ok) return r;
-  const rev = r.value.split(/\s+/)[0];
-  return rev === undefined || rev === ""
-    ? err(kitError("SOURCE_UNREACHABLE", i.url ?? "", `no ${i.ref}`))
-    : ok(rev);
+  const lines = r.value
+    .split("\n")
+    .map((l) => l.split("\t"))
+    .filter((l): l is [string, string] => l.length === 2);
+  const rev = refs.map((ref) => lines.find(([, name]) => name === ref)?.[0]).find((x) => x !== undefined);
+  return rev === undefined ? err(kitError("SOURCE_UNREACHABLE", i.url ?? "", `no ${i.ref}`)) : ok(rev);
 };
 
 // how many of the files changed from the locked commit to the head are in the input's folder
@@ -59,7 +63,7 @@ export const locks = async (root: string): Promise<Result<readonly string[]>> =>
   const inputs = inputsOf(text.value);
   if (!inputs.ok) return inputs;
   const lines = inputs.value.map((i): Result<string> => {
-    if (i.url === null || i.locked === null) return ok(lineOf(i, null, null));
+    if (i.url === null || i.locked === null || i.rev !== null) return ok(lineOf(i, null, null));
     const h = head(i);
     if (!h.ok) return h;
     if (h.value === i.locked || i.dir === null) return ok(lineOf(i, h.value, null));
