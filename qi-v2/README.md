@@ -35,6 +35,7 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
   | `go` | go, gopls; `GOTOOLCHAIN=local` (go never fetches another toolchain) | `GOPATH`, `GOMODCACHE`, `GOCACHE` |
   | `rust` | rustc, cargo, clippy, rustfmt, rust-analyzer | `CARGO_HOME` |
   | `cpp` | cmake, ninja, pkg-config (the compiler is the shell's own, gcc) | — |
+  | `lean` | Lean 4's release 4.35.0-rc3, `lean` and `lake`, from Lean's own archive by its hash, in place of elan (which fetched it into `~/.elan` at a first build, outside the store and the lock); linking with the store's C compiler (`LEAN_CC`), as nixpkgs' elan does; x86_64-linux only, any other system stopping with its name. A Lake project's `lean-toolchain` names the same version, which the project checks | `LAKE_CACHE_DIR` |
 
 A version other than the one nixpkgs a project needs is its own explicit input, in its own flake.
 

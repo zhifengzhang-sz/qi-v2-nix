@@ -1,9 +1,9 @@
 # qi-v2 (README.md): one pinned nixpkgs for every project, a pure shell (mkPureShell), and presets of tools a
-# shell uses: the TeX of the material's books, and the toolchains of Haskell, Go, Rust and C++. A project takes it
+# shell uses: the TeX of the material's books, the toolchains of Haskell, Go, Rust and C++, and Lean. A project takes it
 # as an input pinned by its own lock and follows its nixpkgs (inputs.nixpkgs.follows = "qi-v2/nixpkgs"), so every
 # project at the same qi-v2 version has the same tools; a newer qi-v2 is taken by bumping that lock.
 {
-  description = "qi-v2: one nixpkgs for every project, a pure shell (lib.mkPureShell), and its presets (tex, haskell, go, rust, cpp)";
+  description = "qi-v2: one nixpkgs for every project, a pure shell (lib.mkPureShell), and its presets (tex, haskell, go, rust, cpp, lean)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
@@ -131,7 +131,51 @@ export GOMODCACHE="$GOPATH/pkg/mod" GOCACHE="$HOME/.cache/$QI_SHELL_NAME/go-buil
 
       # C and C++: the compiler is the shell's own (mkShell's stdenv: gcc); cmake, ninja, pkg-config.
       cpp = pkgs: { packages = with pkgs; [ cmake ninja pkg-config ]; };
+
+      # Lean 4: one pinned release for every project, Lean's own release archive fetched by its hash, so that this
+      # flake and a project's lock record it; no download at a first build (elan's way, into ~/.elan, outside the
+      # store). `lean` and `lake` on the path; a Lake project's lean-toolchain names the same version, which the
+      # project checks (Lake reads it only with elan). Its ELF files are patched to the store's libraries; Lake and
+      # leanc link with the store's C compiler and Lean's own libraries (`cc` beside them, LEAN_CC), as nixpkgs' elan
+      # patches a toolchain, so an executable Lean links runs on any Linux, NixOS and a Nix build among them, not
+      # with the bundled clang and sysroot, which would give it the host's loader. Lake's cache under
+      # ~/.cache/<name>/lake. A system with no hash here stops with its name. `package`, `version`: the parts.
+      lean = pkgs:
+        let
+          version = "4.35.0-rc3";
+          assets = {
+            x86_64-linux = { file = "linux"; hash = "sha256-FSbeFsBJbxa0ahaPJsmQr043llBSc8M0L+wX1y12OZc="; };
+          };
+          system = pkgs.stdenv.hostPlatform.system;
+          asset = assets.${system} or (throw "qi-v2 lean: no Lean ${version} for ${system} (qi-v2/flake.nix, lean)");
+          package = pkgs.stdenv.mkDerivation {
+            pname = "lean4";
+            inherit version;
+            src = pkgs.fetchurl {
+              url = "https://github.com/leanprover/lean4/releases/download/v${version}/lean-${version}-${asset.file}.tar.zst";
+              inherit (asset) hash;
+            };
+            nativeBuildInputs = [ pkgs.zstd pkgs.autoPatchelfHook pkgs.makeWrapper ];
+            buildInputs = [ pkgs.stdenv.cc.cc.lib pkgs.zlib ];
+            dontConfigure = true;
+            dontBuild = true;
+            dontStrip = true;
+            unpackPhase = "tar --zstd -xf $src";
+            installPhase = ''
+              mkdir -p $out && cp -r lean-${version}-${asset.file}/. $out/
+              printf '#!%s\nexec %s "$@" -L%s\n' ${pkgs.runtimeShell} ${pkgs.stdenv.cc}/bin/cc $out/lib > $out/bin/cc
+              chmod +x $out/bin/cc
+              wrapProgram $out/bin/lake --set-default LEAN_CC $out/bin/cc
+              wrapProgram $out/bin/leanc --set-default LEAN_CC ${pkgs.stdenv.cc}/bin/cc --append-flags "-L$out/lib"
+            '';
+          };
+        in {
+          inherit package version;
+          packages = [ package ];
+          hook = ''export LAKE_CACHE_DIR="$HOME/.cache/$QI_SHELL_NAME/lake"
+'';
+        };
     in {
-      lib = { inherit mkPureShell tex haskell haskellLsp go rust cpp; };
+      lib = { inherit mkPureShell tex haskell haskellLsp go rust cpp lean; };
     };
 }

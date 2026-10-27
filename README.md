@@ -5,7 +5,7 @@ project's `flake.lock`:
 
 | Flake | What it gives | Input |
 |---|---|---|
-| `qi-v2/` | one pinned `nixpkgs` for every project; `lib.mkPureShell`, a project's pure shell; the presets `tex`, `haskell`, `haskellLsp`, `go`, `rust`, `cpp` (`qi-v2/README.md`) | `inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2";` and `inputs.nixpkgs.follows = "qi-v2/nixpkgs";` |
+| `qi-v2/` | one pinned `nixpkgs` for every project; `lib.mkPureShell`, a project's pure shell; the presets `tex`, `haskell`, `haskellLsp`, `go`, `rust`, `cpp`, `lean` (`qi-v2/README.md`) | `inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2";` and `inputs.nixpkgs.follows = "qi-v2/nixpkgs";` |
 | `kit/` | the kit: a project's spec of its agents (`agents/`) into each kind's files, Claude Code and Copilot (`kit/README.md`); built with `qi-v2`'s `nixpkgs` | `inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit";` and `inputs.kit.inputs.qi-v2.follows = "qi-v2";` |
 
 A project at one commit of this repository has the same tools as every other project at that commit; a newer
