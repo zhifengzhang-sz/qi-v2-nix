@@ -13,6 +13,9 @@ A project's `agents/` is its spec of the work agents do on it, in no tool's term
 
 ## Changes
 
+- **0.3.0**: `kit locks [--root DIR]`: each input of the project's `flake.lock` against its source (`git
+  ls-remote`, a private GitHub repository asked again by SSH), an input taken from a folder (`?dir=`) judged by that
+  folder (GitHub's compare, `gh`): current, or outdated with `nix flake update NAME`. Changes nothing.
 - **0.2.0**: the kit's shared rules (`src/rules.md`), merged into every project's `AGENTS.md` and each role's Every
   role, the kit's first; a project rule repeating a shared one is refused.
 - **0.1.0**: the format and the generator.

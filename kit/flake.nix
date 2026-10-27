@@ -44,7 +44,7 @@
           };
           kit = pkgs.stdenvNoCC.mkDerivation {
             pname = "kit";
-            version = "0.2.0";
+            version = "0.3.0";
             inherit src;
             nativeBuildInputs = [ pkgs.bun pkgs.makeWrapper ];
             dontConfigure = true;

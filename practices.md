@@ -18,7 +18,8 @@ Why: one lock, so every machine and every person builds the same thing.
 
 ## 2. A lock is outdated when its source has moved past it
 
-- At the start of every session `make locks-check` asks each lock's source; each outdated lock is reported with what
+- At the start of every session `make locks-check` asks each lock's source (`kit locks` for `flake.lock`, the
+  project's own locks by its own check); each outdated lock is reported with what
   updates it, and none is updated without the owner's say.
 - An input taken from a folder of a repository (`?dir=…`) is judged by that folder: the repository moving does not
   count unless the folder changed.

@@ -39,6 +39,7 @@ export const KIT_ERRORS = [
   "KIND_UNKNOWN",
   "ARGS_INVALID",
   "RUN_OUTSIDE",
+  "SOURCE_UNREACHABLE",
 ] as const;
 export type KitCode = (typeof KIT_ERRORS)[number];
 
