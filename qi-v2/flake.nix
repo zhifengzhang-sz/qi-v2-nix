@@ -27,9 +27,10 @@
       # keeps none of the other's tools.
       mkPureShell = pkgs: { name, packages ? [ ], uses ? [ ], hostTools ? [ ], needs ? [ ], env ? { }, greeting ? "", closing ? "" }:
         let
-          # sudo (setuid, which the Nix store cannot hold), the editor and the agent, and wslpath, which the
-          # editor's WSL launcher needs
-          personTools = [ "sudo" "code" "claude" "wslpath" ];
+          # sudo (setuid, which the Nix store cannot hold), the editor and the agent, wslpath, which the editor's
+          # WSL launcher needs, and docker, the client of the machine's own Docker engine, which runs a product's
+          # released image (releaseImage)
+          personTools = [ "sudo" "code" "claude" "wslpath" "docker" ];
           allHostTools = lib.unique (hostTools ++ personTools);
           need = n:
             let line = ''__pure_need ${lib.escapeShellArg n.tool} ${lib.escapeShellArg n.by}'';
