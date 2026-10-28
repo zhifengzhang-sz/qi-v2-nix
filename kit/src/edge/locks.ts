@@ -5,7 +5,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type Input, inputsOf, lineOf } from "../locks.ts";
+import { type Input, inputsOf, lineOf, newer, productOf } from "../locks.ts";
 import { err, kitError, ok, type Result } from "../result.ts";
 import { tryAsync } from "./catch.ts";
 
@@ -22,21 +22,44 @@ const run = (cmd: string, args: readonly string[]): Result<string> => {
       );
 };
 
+// the source's refs that `args` name, by git ls-remote, a private GitHub repository asked again by SSH: each its
+// commit and its name
+const remote = (i: Input, args: readonly string[]): Result<readonly (readonly [string, string])[]> => {
+  const asked = (url: string) =>
+    run("git", [
+      "ls-remote",
+      ...args.filter((a) => a.startsWith("--")),
+      url,
+      ...args.filter((a) => !a.startsWith("--")),
+    ]);
+  const first = asked(i.url ?? "");
+  const gh = /^https:\/\/github\.com\/(.+?)(?:\.git)?$/.exec(i.url ?? "");
+  const r = first.ok || gh === null ? first : asked(`git@github.com:${gh[1]}.git`);
+  return r.ok
+    ? ok(
+        r.value
+          .split("\n")
+          .map((l) => l.split("\t"))
+          .filter((l): l is [string, string] => l.length === 2),
+      )
+    : r;
+};
+
 // the commit a branch or a tag is at: a tag's commit (an annotated tag's `^{}`) first, then a branch's
 const head = (i: Input): Result<string> => {
   const refs =
     i.ref === "HEAD" ? ["HEAD"] : [`refs/tags/${i.ref}^{}`, `refs/tags/${i.ref}`, `refs/heads/${i.ref}`];
-  const asked = (url: string) => run("git", ["ls-remote", url, ...refs]);
-  const first = asked(i.url ?? "");
-  const gh = /^https:\/\/github\.com\/(.+?)(?:\.git)?$/.exec(i.url ?? "");
-  const r = first.ok || gh === null ? first : asked(`git@github.com:${gh[1]}.git`);
+  const r = remote(i, refs);
   if (!r.ok) return r;
-  const lines = r.value
-    .split("\n")
-    .map((l) => l.split("\t"))
-    .filter((l): l is [string, string] => l.length === 2);
+  const lines = r.value;
   const rev = refs.map((ref) => lines.find(([, name]) => name === ref)?.[0]).find((x) => x !== undefined);
   return rev === undefined ? err(kitError("SOURCE_UNREACHABLE", i.url ?? "", `no ${i.ref}`)) : ok(rev);
+};
+
+// the tags of the product whose release the input follows (`<product>-*`), by their names
+const tagsOf = (i: Input, product: string): Result<readonly string[]> => {
+  const r = remote(i, ["--tags", "--refs", `refs/tags/${product}-*`]);
+  return r.ok ? ok(r.value.map(([, name]) => name.replace(/^refs\/tags\//, ""))) : r;
 };
 
 // how many of the files changed from the locked commit to the head are in the input's folder
@@ -66,6 +89,11 @@ export const locks = async (root: string): Promise<Result<readonly string[]>> =>
     if (i.url === null || i.locked === null || i.rev !== null) return ok(lineOf(i, null, null));
     const h = head(i);
     if (!h.ok) return h;
+    const product = productOf(i);
+    if (product !== null) {
+      const tags = tagsOf(i, product);
+      return tags.ok ? ok(lineOf(i, h.value, null, newer(i, tags.value))) : tags;
+    }
     if (h.value === i.locked || i.dir === null) return ok(lineOf(i, h.value, null));
     const n = inFolder(i, h.value);
     return n.ok ? ok(lineOf(i, h.value, n.value)) : n;

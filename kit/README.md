@@ -25,6 +25,9 @@ The shared rules (`src/rules.md`) name what a project that takes them has; the k
 
 ## Changes
 
+- **0.3.3**: `kit locks`: an input that follows a release's tag (`?ref=<product>-<major>.<minor>.<patch>`) is outdated
+  where its source has a newer release of the product (`<product>-*`, by version), and its line says how to take it:
+  the tag in `flake.nix`, then `nix flake update NAME` (a tag does not move, so it was current for good).
 - **0.3.2**: `kit locks`: an input that follows another's (`follows`) is read by its path through the lock's nodes
   (it was by the path's last name), and its outdated line says where it is updated: in the lock it comes through, then
   `nix flake update` of the input it comes by (it said `nix flake update NAME`, which Nix refuses for such an input).

@@ -85,21 +85,60 @@ export const inputsOf = (text: string): Result<readonly Input[]> => {
   );
 };
 
-// an input's line, given the commit its branch or tag is at and, for an input taken from a folder, how many of the
-// files changed since the locked commit are in that folder
-export const lineOf = (i: Input, head: string | null, inFolder: number | null): string =>
+// a release's tag, `<product>-<major>.<minor>.<patch>` (the shared rules, A release): its product and its version
+const release = (tag: string): { readonly product: string; readonly version: readonly number[] } | null => {
+  const m = /^(.+)-(\d+)\.(\d+)\.(\d+)$/.exec(tag);
+  return m === null ? null : { product: m[1] ?? "", version: [m[2], m[3], m[4]].map(Number) };
+};
+
+// the product's newest release among the source's tags, where it is newer than the release the input follows; null
+// for an input that follows no release's tag. A tag does not move, so the release after it is what makes it outdated
+export const newer = (i: Input, tags: readonly string[]): string | null => {
+  const at = release(i.ref);
+  if (at === null) return null;
+  // whether version a is after version b, the first number that differs deciding
+  const after = (a: readonly number[], b: readonly number[]): boolean => {
+    const k = a.findIndex((x, n) => x !== b[n]);
+    return k >= 0 && (a[k] ?? 0) > (b[k] ?? 0);
+  };
+  const best = tags
+    .flatMap((t) => {
+      const r = release(t);
+      return r !== null && r.product === at.product ? [{ tag: t, version: r.version }] : [];
+    })
+    .reduce((x, y) => (after(y.version, x.version) ? y : x), { tag: i.ref, version: at.version });
+  return best.tag === i.ref ? null : best.tag;
+};
+
+// the product's tag prefix an input's tags are asked by, or null when it follows no release's tag
+export const productOf = (i: Input): string | null => release(i.ref)?.product ?? null;
+
+// an input's line, given the commit its branch or tag is at, for an input taken from a folder how many of the files
+// changed since the locked commit are in that folder, and for an input that follows a release's tag the newer release
+export const lineOf = (
+  i: Input,
+  head: string | null,
+  inFolder: number | null,
+  later: string | null = null,
+): string =>
   i.url === null || i.locked === null
     ? `flake.lock ${i.name}: not asked (not a git or GitHub input)`
     : i.rev !== null
       ? `flake.lock ${i.name}: pinned (${i.rev.slice(0, 10)}, the flake's ?rev=): not asked; flake.nix changes it`
-      : head === i.locked
-        ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
-        : i.dir !== null && inFolder === 0
-          ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
-          : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
-              i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
-            }: ${
-              i.through === null
-                ? `nix flake update ${i.name}`
-                : `it comes through ${i.through.slice(0, -1).join("/")}: updated in its lock, then nix flake update ${i.through[0]}`
-            }`;
+      : head === i.locked && later !== null
+        ? `flake.lock ${i.name}: outdated: locked ${i.ref} (${i.locked.slice(0, 10)}), ${i.url}: ${later} is released: ${
+            i.through === null
+              ? `?ref=${later} in flake.nix, then nix flake update ${i.name}`
+              : `it comes through ${i.through.slice(0, -1).join("/")}: updated in its lock, then nix flake update ${i.through[0]}`
+          }`
+        : head === i.locked
+          ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
+          : i.dir !== null && inFolder === 0
+            ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
+            : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
+                i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
+              }: ${
+                i.through === null
+                  ? `nix flake update ${i.name}`
+                  : `it comes through ${i.through.slice(0, -1).join("/")}: updated in its lock, then nix flake update ${i.through[0]}`
+              }`;
