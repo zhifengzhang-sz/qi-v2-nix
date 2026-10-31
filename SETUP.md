@@ -535,7 +535,7 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 |---|---|
 | Step 1: adding `read:packages` to an existing `gh` login | Done and checked |
 | Step 1: `apt` install, fresh login and new SSH key | Not run for this guide |
-| Step 2: firmware and BIOS | SSD firmware updated; BIOS not updated |
+| Step 2: firmware and BIOS | SSD firmware updated, and the repair's heavy downloads then finished with no crash; BIOS not updated |
 | Steps 3 and 4: networking, Nix and flakes | Done and checked |
 | Step 5: mirror test and `substituters` | Done and checked |
 | Step 6: Docker install | Not run for this guide |
@@ -544,7 +544,7 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Step 11: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
 | USB drive | Notes copy done; archive restore not run for this guide |
 | WSL install | Not run for this guide |
-| Store check and repair commands | The check works; the repair has not yet finished on a real case |
+| Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
 | Steps 9 and 10: `nix develop`, `make install`, `make locks-check` | Not completed; Windows crashed during the heavy downloads, and the cause isn't settled |
 
 The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
