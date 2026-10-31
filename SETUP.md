@@ -390,6 +390,13 @@ make install
 make locks-check
 ```
 
+The first `nix develop` here fetches the private materials repository from GitHub over SSH. If it stalls there, turn
+the VPN on until that passes. The book uses the same content as the materials project, so `make install` doesn't
+download it again.
+
+`make locks-check` asks GitHub about each lock and prints nothing until it has the answers, so it can look stuck on
+a slow connection. Give it time before stopping it.
+
 **Check:** this builds the two About PDFs in `tex/`.
 
 ```bash
@@ -568,8 +575,10 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
 | Step 9: `nix develop` and `make install` | Done and checked; the content verified with 837 files, and no crash after the firmware update |
 | Step 9: `make content-fetch` | Tested only with the files already present; not yet on a real download |
-| Step 9: `make locks-check` | Not yet run |
-| Step 10: the book project | Not run for this guide |
+| Step 9: `make locks-check` | Done; it reported `nixpkgs` and `clcpp.lock` as outdated, which is a report and not a failure |
+| Step 10: `nix develop`, `make install` and `make locks-check` | Done and checked; the store verified clean afterwards |
+| Step 10: `make about-pdfs` and `gh auth setup-git` | Not run for this guide |
+| A full Lean build, `make verify VERIFY=--all` | Not run for this guide |
 
 The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
 2026-10-21 without steps 3 and 6.
