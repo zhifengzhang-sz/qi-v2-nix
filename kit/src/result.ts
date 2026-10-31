@@ -40,6 +40,7 @@ export const KIT_ERRORS = [
   "ARGS_INVALID",
   "RUN_OUTSIDE",
   "SOURCE_UNREACHABLE",
+  "PRODUCTS_INVALID",
 ] as const;
 export type KitCode = (typeof KIT_ERRORS)[number];
 

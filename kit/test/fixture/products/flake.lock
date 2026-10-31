@@ -1,0 +1,18 @@
+{
+  "nodes": {
+    "kit": {
+      "inputs": { "nixpkgs": "nixpkgs" },
+      "locked": { "rev": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "type": "github" },
+      "original": { "dir": "kit", "owner": "o", "repo": "r", "type": "github" }
+    },
+    "nixpkgs": {
+      "locked": { "rev": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "type": "github" },
+      "original": { "owner": "NixOS", "ref": "nixos-26.05", "repo": "nixpkgs", "type": "github" }
+    },
+    "root": {
+      "inputs": { "kit": "kit", "nixpkgs": ["kit", "nixpkgs"] }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

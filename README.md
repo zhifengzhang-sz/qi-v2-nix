@@ -15,8 +15,10 @@ is a relative path within this repository).
 Setting up a new machine from nothing, by hand: `SETUP.md`.
 
 How every project takes its inputs and publishes its code and data (inputs, locks, releases, private data on
-GHCR, the binary cache, docs and decisions): `practices.md`. The rules behind them are the kit's shared rules,
-`kit/src/rules.md`.
+GHCR, the binary cache, docs and decisions, what a project states about itself): `practices.md`. The rules behind
+them are the kit's shared rules, `kit/src/rules.md`.
+
+What this repository owns, gives and takes: `PRODUCTS.md`.
 
 The kit's own checks, in a shell with Bun: `cd kit && bun install --frozen-lockfile && bun run check && bun run
 typecheck && bun run test`.

@@ -65,6 +65,21 @@ what to expect.
 - Before a design is replaced, what it guarantees is listed, and the new design shows how it keeps each, or says
   it is lost. A question ("why do we need X?") gets X's reason, not a redesign.
 
+## 7. What a project states about itself
+
+Every project has `PRODUCTS.md` at its root, with exactly these sections:
+
+- `## Responsibility`: a few sentences on what the project owns and what it does not.
+- `## Products`: a table with the columns Product, What, Form, Version, Release, Doc. Form is one of flake package,
+  image, library, file. Doc is the path inside the project that holds the detail.
+- `## Takes`: a table with the columns Product, From, Pinned by. Every flake input and every `*.lock` file at the
+  root except `flake.lock` has a row: a flake input's row has the input's name under Product, a lock file's row
+  names it under Pinned by.
+
+`PRODUCTS.md` is an index, so detail stays in the file its row names. It lists what the project takes, never who
+takes from it. It changes in the same commit as the change it describes. `make products-check` runs `kit products`,
+which fails, naming the fault, where the file and the project disagree.
+
 ## Taking them
 
 A project takes the kit (`inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit";`), then `nix flake update

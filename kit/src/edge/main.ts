@@ -1,7 +1,8 @@
 // The kit's command: `kit generate [--kind claude-code|copilot|all] [--root DIR]` writes each kind's files from
 // the project's agents/; `kit check [--root DIR]` decodes the spec and writes nothing; `kit run-start --role R`
 // and `kit run-check --role R [--files a,b]` check a role's run on its output (run.ts); `kit hook start|stop`
-// does it from the Copilot CLI's subagent hooks. The effects (files, git,
+// does it from the Copilot CLI's subagent hooks; `kit locks [--root DIR]` asks each input of flake.lock's source
+// (edge/locks.ts); `kit products [--root DIR]` checks PRODUCTS.md (edge/products.ts). The effects (files, git,
 // the process's exit) are here; what is written and judged is decided by the pure part (read.ts, kinds/, run.ts).
 import { readFileSync } from "node:fs";
 import { appendFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -17,6 +18,7 @@ import { ModelClass, type Role, RunRecord, type Spec } from "../spec.ts";
 import { tryAsync, tryCatch } from "./catch.ts";
 import { snapshot } from "./git.ts";
 import { locks } from "./locks.ts";
+import { products } from "./products.ts";
 
 // the generated files of the last run, so that a file no longer generated is removed (a role renamed)
 const MANIFEST = "agents.generated";
@@ -33,6 +35,7 @@ const Args = z.union([
   z.tuple([z.literal("run-check")]).rest(z.string()),
   z.tuple([z.literal("hook"), z.enum(["start", "stop"])]).rest(z.string()),
   z.tuple([z.literal("locks")]).rest(z.string()),
+  z.tuple([z.literal("products")]).rest(z.string()),
 ]);
 // what the Copilot CLI hands a subagentStart or subagentStop hook on its input (notes/copilot.md, Tried in the
 // CLI, the payload): the subagent's name, which is the role's, and its run's id; the other fields are not read
@@ -318,7 +321,7 @@ const run = async (argv: readonly string[]): Promise<Result<readonly string[]>> 
       kitError(
         "ARGS_INVALID",
         "argv",
-        "usage: kit generate|check [--kind K] [--root DIR] | kit run-start|run-check --role R [--files a,b] [--root DIR] | kit hook start|stop [--root DIR] (the hook's JSON on stdin) | kit locks [--root DIR]",
+        "usage: kit generate|check [--kind K] [--root DIR] | kit run-start|run-check --role R [--files a,b] [--root DIR] | kit hook start|stop [--root DIR] (the hook's JSON on stdin) | kit locks [--root DIR] | kit products [--root DIR]",
       ),
     );
   if (a.data[0] === "hook") return hookStep(a.data[1] === "start" ? "start" : "stop", argv.slice(2));
@@ -326,6 +329,7 @@ const run = async (argv: readonly string[]): Promise<Result<readonly string[]>> 
   if (!f.ok) return f;
   const root = f.value["--root"] ?? ".";
   if (a.data[0] === "locks") return locks(root);
+  if (a.data[0] === "products") return products(root);
   const kind = f.value["--kind"] ?? "all";
   const k = KINDS.find((x) => x === kind);
   if (k === undefined) return err(kitError("KIND_UNKNOWN", "--kind", `${kind}: one of ${KINDS.join(", ")}`));

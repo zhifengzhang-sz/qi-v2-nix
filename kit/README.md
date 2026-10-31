@@ -9,22 +9,30 @@ A project's `agents/` is its spec of the work agents do on it, in no tool's term
 - `agents.local.json` (the developer's own, ignored by git): `{"copilot": {"models": {"strongest": "<a full ID of their plan>", ...}}}`; a class with no ID gives a Copilot file with no `model`, the session's then used.
 - `kit run-start --role R` and `kit run-check --role R [--files a,b]`: a role's run checked on its output, where a kind cannot restrict its tools (Copilot in VS Code gave `reviewer` edit and shell tools: `notes/copilot-vscode.md`, 4a). Before the run, HEAD, the stash and every path git lists as differing from HEAD in the work tree or the index are recorded (a file by its hash, a link by its target; renames as their two paths; `agents.run/<role>.json`, ignored by git), so a run that commits, stashes, moves or deletes is seen; `--files` takes exact paths, comma-separated; after it, what changed is judged by the role's `writes`: `none`, nothing may change; `brief-files`, only the files named; a role that builds or makes the change, what changed is listed. Files ignored by git are not seen: what a build writes there is the build's. Two roles run at once cannot be told apart.
 - `kit hook start|stop`: the check run by the Copilot CLI's hooks, `.github/hooks/kit.json`, which `kit generate` writes with the Copilot files: on `subagentStart` and `subagentStop` the CLI hands the hook a JSON object whose `agentName` is the role's name and `agentId` its run's (`notes/copilot.md`, Tried in the CLI, the payload). The run is recorded under its id on start and judged on stop, as by hand, except a `brief-files` role, whose changes are listed and not judged (a hook does not know the brief). On a role's stop, the hook also writes its validated staging record, `agents.run/<agentId>.run.json`, and the response it names. It records the role, Copilot kind, effort, role brief and changed paths; the hook payload does not give the resolved model, family or token count, so those are explicitly `not reported` until the session supplies `/usage` or OpenTelemetry evidence before attaching the record to a ledger run. Every outcome is a line in `agents.run/log`: the time, the run's id, start or stop, a status word (`RECORDED`, `PASS`, `FAIL`, `LISTED`, `SKIPPED` for a subagent that is no role, `ERROR` for an input or a spec it could not read), then the lines; the hook exits 0 whatever happened, so it never stops the CLI. Two runs at once keep their own records, but their changes mix, the work tree being one. The CLI loads the hooks only in a trusted folder, once `make agents` has written them.
+- `kit products [--root DIR]`: checks the project's `PRODUCTS.md` (`practices.md`, 7) and changes nothing. It fails, naming every fault, when the file is missing, a section or column is missing, a flake input or a `*.lock` file at the root has no row in Takes, a row in Takes matches no flake input or lock file, or a Doc path does not exist in the project (empty, or leaving the project, counts as not existing). A flake input's row has the input's name under Product; a lock file's row names it under Product or Pinned by. The root's `*.lock` files are as a shell's glob finds them, no hidden file and no folder, `flake.lock` apart. A project with no `flake.lock` at its root has no inputs: it passes with no row for them, and a row that names one matches nothing. The other cells, Form's among them, are not checked. Needs no `agents/`.
 - In the project: `make agents` runs `kit generate`; `make run-start` and `make run-check` the two above.
 
 ## What the shared rules assume
 
 The shared rules (`src/rules.md`) name what a project that takes them has; the kit gives the agents' files and
-`kit run-start`, `kit run-check`, `kit hook` and `kit locks`, and neither installs nor checks the rest:
+`kit run-start`, `kit run-check`, `kit hook`, `kit locks` and `kit products`, and neither installs nor checks the
+rest:
 
 - roles in `agents/roles/`, `checker` among them (it runs the checks), and a reviewing role for "the other model";
 - `make agents`, `make verify` (the checks for what is staged) and `make install` (the pre-commit hook that runs it),
-  `make run-start` and `make run-check` (the kit's two), `make locks-check` (`kit locks`, and the project's own locks);
+  `make run-start` and `make run-check` (the kit's two), `make locks-check` (`kit locks`, and the project's own locks),
+  `make products-check` (`kit products`);
+- `PRODUCTS.md` at the root;
 - `.reports/`, ignored by git;
 - `docs/opening.md`, `docs/milestones.md`, `docs/designs/`, `docs/decisions.md`;
 - the project's secret, named in its own `agents/rules.md`.
 
 ## Changes
 
+- **0.4.0**: `kit products [--root DIR]`: a project's `PRODUCTS.md` against what it has (its sections and columns, its
+  flake inputs and root `*.lock` files in Takes and each row of Takes against them, its Doc paths), each fault named;
+  a project with no `flake.lock` at its root has no inputs and passes. Changes nothing. The shared rule that says what
+  `PRODUCTS.md` holds; `PRODUCTS.md` and `make products-check` in what the shared rules assume.
 - **0.3.3**: `kit locks`: an input that follows a release's tag (`?ref=<product>-<major>.<minor>.<patch>`) is outdated
   where its source has a newer release of the product (`<product>-*`, by version), and its line says how to take it:
   the tag in `flake.nix`, then `nix flake update NAME` (a tag does not move, so it was current for good).
