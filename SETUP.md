@@ -330,6 +330,26 @@ nix develop
 
 The prompt now shows `(materials)`. Run the rest inside that shell, because `make` stops outside it.
 
+The shell may say `content ... not installed`, which the next commands fix. It may also say `ollama is not on this
+machine`. That's harmless when Ollama runs on Windows, because the tools reach it through `localhost`.
+
+`make install` downloads the content from GHCR and then asks Nix's download sites for packages. If one network
+reaches both, this is all you need:
+
+```bash
+make install
+make locks-check
+```
+
+If it doesn't, such as when GHCR needs a VPN and your Nix mirrors time out through it, run the two parts apart. Turn
+the VPN on for the download:
+
+```bash
+make content-fetch
+```
+
+Then turn it off for the rest. `make install` finds the downloaded files and doesn't contact GHCR again.
+
 ```bash
 make install
 make locks-check
@@ -516,6 +536,7 @@ possible causes. If the dump file also fails to write, suspect the drive or its 
 | A request to Ollama is reset, and its log shows `0xc0000417` | The Ollama server crashed and is restarting itself | Wait about 15 seconds and try again |
 | Nix downloads crawl | The site is slow from your network | Do step 5 |
 | A mirror returns `000` | The site can't be reached, often because of a VPN | Test again with the VPN off |
+| `unable to download ... .narinfo: Timeout was reached` | A Nix mirror can't be reached, often because of a VPN | Wait, because Nix moves on to the next site; or use `make content-fetch` as in step 9 |
 
 To fix the model's letter case without downloading it again, keep a temporary copy while you rename it:
 
@@ -545,7 +566,10 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | USB drive | Notes copy done; archive restore not run for this guide |
 | WSL install | Not run for this guide |
 | Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
-| Steps 9 and 10: `nix develop`, `make install`, `make locks-check` | Not completed; Windows crashed during the heavy downloads, and the cause isn't settled |
+| Step 9: `nix develop` and `make install` | Done and checked; the content verified with 837 files, and no crash after the firmware update |
+| Step 9: `make content-fetch` | Tested only with the files already present; not yet on a real download |
+| Step 9: `make locks-check` | Not yet run |
+| Step 10: the book project | Not run for this guide |
 
 The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
 2026-10-21 without steps 3 and 6.
