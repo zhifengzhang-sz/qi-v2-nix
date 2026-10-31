@@ -62,10 +62,11 @@ You need a GitHub account, and the owner of the projects has to give that accoun
 
 | Kind | Names | Where the owner grants it |
 |---|---|---|
-| Repositories | `qi-v2-chanlun-materials`, `qi-v2-chanlun`, and `qi-v2-algo` for the chart viewer | The repository's Settings, Collaborators |
-| Packages | `chanlun-content`, `clcpp` and `chanlun-query` | Each package's settings, Manage access |
+| Repositories | `qi-v2-chanlun-materials` and `qi-v2-chanlun` | The repository's Settings, Collaborators |
+| Packages | `chanlun-content` and `chanlun-query` | Each package's settings, Manage access |
 
 Repository access and package access are separate, so a developer needs both.
+
 
 ### Two kinds of terminal
 
@@ -265,7 +266,7 @@ like that, keep the VPN off for `nix develop` and turn it on for steps that reac
 
 ## 6. Docker
 
-**Why:** the chart tools and the query tools run released images.
+**Why:** the query tools run a released image.
 
 This installs Docker Engine inside Ubuntu and lets you run it without `sudo`:
 
@@ -295,11 +296,10 @@ gh auth token | nix run nixpkgs#crane -- auth login ghcr.io -u "$(gh api user --
 `crane` warns that the login is stored unencrypted in `~/.docker/config.json`. That's expected, and Docker uses the
 same login.
 
-**Check:** both lines list image tags.
+**Check:** this lists image tags.
 
 ```bash
 nix run nixpkgs#crane -- ls ghcr.io/zhifengzhang-sz/chanlun-content
-nix run nixpkgs#crane -- ls ghcr.io/zhifengzhang-sz/clcpp
 ```
 
 `UNAUTHORIZED: authentication required` means the registry login is missing. A refusal after a successful login
@@ -317,6 +317,8 @@ git clone git@github.com:zhifengzhang-sz/qi-v2-chanlun.git
 ```
 
 `Repository not found` means your account hasn't been given access yet. See [On GitHub](#on-github).
+
+Private repositories need the `git@github.com:` form shown here. An `https://` address stops and asks for a username.
 
 ## 9. The materials project
 
@@ -366,15 +368,7 @@ ls -d .content
 
 An `outdated` line is a report, not a failure. Don't update a lock unless you mean to.
 
-`docs/opening.md` says where the work stands. These two are optional. The first builds Lean from nothing, using
-about 12 GB of memory, and the second opens one chart.
-
-```bash
-make verify VERIFY=--all
-make chart I=SH000001 P=1m FROM=2007-05-23 TO=2007-05-23
-```
-
-Type `exit` to leave the shell.
+`docs/opening.md` says where the work stands. Type `exit` to leave the shell.
 
 ## 10. The book project
 
@@ -403,12 +397,6 @@ a slow connection. Give it time before stopping it.
 make about-pdfs
 ```
 
-Building the book's chart viewer also needs git's GitHub login over HTTPS:
-
-```bash
-gh auth setup-git
-```
-
 ## 11. Ollama
 
 Ollama is only needed for `make ask`, search by meaning, and making vectors. Everything else works without it.
@@ -431,60 +419,11 @@ Type the names exactly as shown. The projects compare model names letter for let
 curl -s http://localhost:11434/api/tags | python3 -c 'import sys,json; [print(m["name"]) for m in json.load(sys.stdin)["models"]]'
 ```
 
-## For the owner: restoring from the USB drive
-
-This section only applies to the owner's USB drive. It can stand in for the login in step 1 and the registry login
-in step 7, and it brings back local notes that Git doesn't carry. You need the archive's passphrase, which isn't
-written down anywhere.
-
-WSL doesn't mount a USB drive by itself. Replace `f` with your drive's letter:
-
-```bash
-sudo mkdir -p /mnt/f
-sudo mount -t drvfs F: /mnt/f
-```
-
-### Restore the keys
-
-The archive holds the SSH key, the logins and the data keys. Unpacking it **replaces** any of those files already
-in your home folder, so back them up first. `gpg` asks for the passphrase.
-
-```bash
-sudo apt install gnupg
-cd /mnt/f/rxt-5090-nj/dev
-gpg -d keys-2026-10-28.tar.gz.gpg | tar xzf - -C ~
-chmod 600 ~/.ssh/id_ed25519 ~/.config/chanlun/massive_key ~/.aws/credentials \
-          ~/.config/gh/hosts.yml ~/.docker/config.json ~/.claude/.credentials.json
-```
-
-This also creates `~/dev/qi/qi-v2-chanlun-materials/`, which holds only notes. You can ignore that folder, because
-the next step copies the same notes from the drive.
-
-### Copy the notes
-
-Do this after step 8. The `.` at the end of each source path includes hidden folders such as `.reports`.
-
-```bash
-USB=/mnt/f/rxt-5090-nj/dev
-cp -r $USB/qi-v2-chanlun-materials/. ~/dev/qi/github/qi-v2-chanlun-materials/
-cp -r $USB/qi-v2-chanlun/. ~/dev/qi/github/qi-v2-chanlun/
-```
-
-Files with the same name are replaced, so a tracked file can show as modified. Look at the change first:
-
-```bash
-git -C ~/dev/qi/github/qi-v2-chanlun-materials status --short
-```
-
-Nix then warns `Git tree ... is dirty` in that project. The warning is harmless.
-
 ## Extras
 
 | You want | What to do |
 |---|---|
 | The tools inside VS Code | Follow `docs/content.md`, The editor, in the materials project (direnv) |
-| The weekly market data update | Needs `~/.config/chanlun/massive_key`, from the archive or the vendor's dashboard |
-| The Nix binary cache | Needs `~/.aws/credentials`, from the archive; see `practices.md`, section 5 |
 
 ## When something goes wrong
 
@@ -532,9 +471,9 @@ possible causes. If the dump file also fails to write, suspect the drive or its 
 | `sudo: nix-store: command not found` | `sudo` doesn't use your `PATH` | Use the full path, as in the repair command above |
 | `error: no arguments expected` | Two commands were joined on one line | Run them separately, or put `;` between them |
 | `Could not resolve host` or `no such host` | A DNS failure, often while a VPN is changing | Run the command again |
-| `No such file or directory` under `/mnt/f` | WSL hasn't mounted the USB drive | Mount it, as in [the USB section](#for-the-owner-restoring-from-the-usb-drive) |
 | `UNAUTHORIZED: authentication required` | The registry login is missing | Do step 7 |
 | `Repository not found` | Your account has no access to that private repository | Ask the owner for access |
+| `Username for 'https://github.com':` | You're cloning a private repository over HTTPS | Press Ctrl+C and use the `git@github.com:` form |
 | `make` stops with a message about the shell | You are outside `nix develop` | Run `nix develop` first |
 | `Git tree ... is dirty` | The clone has uncommitted changes | Nothing, it's harmless |
 | `pull model manifest: 412` | Ollama is too old for that model | Update Ollama |
@@ -570,15 +509,13 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Step 7: registry login and checks | Done and checked |
 | Step 8: clones | Done and checked |
 | Step 11: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
-| USB drive | Notes copy done; archive restore not run for this guide |
 | WSL install | Not run for this guide |
 | Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
 | Step 9: `nix develop` and `make install` | Done and checked; the content verified with 837 files, and no crash after the firmware update |
 | Step 9: `make content-fetch` | Tested only with the files already present; not yet on a real download |
-| Step 9: `make locks-check` | Done; it reported `nixpkgs` and `clcpp.lock` as outdated, which is a report and not a failure |
+| Step 9: `make locks-check` | Done; it reported outdated locks, which is a report and not a failure |
 | Step 10: `nix develop`, `make install` and `make locks-check` | Done and checked; the store verified clean afterwards |
-| Step 10: `make about-pdfs` and `gh auth setup-git` | Not run for this guide |
-| A full Lean build, `make verify VERIFY=--all` | Not run for this guide |
+| Step 10: `make about-pdfs` | Not run for this guide |
 
 The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
 2026-10-21 without steps 3 and 6.
