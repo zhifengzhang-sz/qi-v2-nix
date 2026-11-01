@@ -142,6 +142,51 @@ describe("kit products", () => {
     expect(r.stderr).toContain("SPEC_INVALID flake.lock");
     expect(kit(join(root, "no-such-folder")).stderr).toContain("PRODUCTS.md: missing");
   });
+  it("takes each of the four Forms, and fails any other, naming the row", () => {
+    for (const form of ["image", "library", "file", "`file`"])
+      expect(kit(edited(project(), "| flake package |", `| ${form} |`)).status).toBe(0);
+    fails(
+      edited(project(), "| flake package |", "| program |"),
+      '## Products: tool: Form "program" is not one of flake package, image, library, file',
+    );
+    fails(edited(project(), "| flake package |", "| Library |"), 'Form "Library"');
+    fails(edited(project(), "| flake package |", "| |"), 'Form ""');
+  });
+  it("fails a ## section other than the three, each named", () => {
+    fails(
+      edited(project(), "## Takes", "## Notes\n\nMore.\n\n## Takes"),
+      "## Notes: not one of the sections Responsibility, Products, Takes",
+    );
+    const root = edited(project(), "## Products", "## First\n\n## Products");
+    fails(edited(root, "## Takes", "## Second\n\n## Takes"), "## Second: not one of the sections");
+    fails(root, "## First: not one of the sections");
+  });
+  it("takes a deeper heading in a section, and a heading's mark in fenced code as no heading", () => {
+    const deeper = "### How\n\nIn one place.\n\n## Products";
+    expect(kit(edited(project(), "## Products", deeper)).status).toBe(0);
+    const code = "```bash\n## not a section\n# a comment\n```\n\n## Products";
+    expect(kit(edited(project(), "## Products", code)).status).toBe(0);
+    const first = "## Takes\n\n~~~\n# a comment\n| a table | in code |\n~~~\n";
+    expect(kit(edited(project(), "## Takes\n", first)).stdout).toContain("1 products, 3 taken, valid");
+    const unclosed = (fence: string) => `${fence}\n## not a section\n`;
+    expect(statedOf(unclosed("```")).headings).toEqual([]);
+    expect(statedOf(`${unclosed("```")}~~~\n## still code\n\`\`\`\n## Out\n`).headings).toEqual(["Out"]);
+  });
+  it("fails a column other than those named, in either table", () => {
+    fails(
+      edited(project(), "| Release | Doc |", "| Release | Doc | Owner |"),
+      '## Products: column "Owner" is not one of Product, What, Form, Version, Release, Doc',
+    );
+    fails(
+      edited(project(), "| From | Pinned by |", "| From | Pinned by | Note |"),
+      '## Takes: column "Note" is not one of Product, From, Pinned by',
+    );
+  });
+  it("passes this repository's own PRODUCTS.md", () => {
+    const r = kit(join(import.meta.dirname, "../.."));
+    expect(r.stderr).toBe("");
+    expect(r.status).toBe(0);
+  });
   it("reads a table's cells without their code marks; a pipe written \\| stays in its cell", () => {
     const s = statedOf(
       "## Takes\r\n\r\n| Product | From | Pinned by |\r\n|---|:--|---|\r\n| `a` | b \\| c | `flake.lock` |\r\n\r\n# The end\r\n",

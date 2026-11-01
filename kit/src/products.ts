@@ -1,14 +1,18 @@
 // What a project states about itself (practices.md, 7; the shared rules, The session): PRODUCTS.md's sections as they
 // are written, and each fault in them given what the project has. Pure; the edge reads the files (edge/products.ts).
 
+const SECTIONS = ["Responsibility", "Products", "Takes"];
 const PRODUCT_COLUMNS = ["Product", "What", "Form", "Version", "Release", "Doc"];
 const TAKES_COLUMNS = ["Product", "From", "Pinned by"];
+const FORMS = ["flake package", "image", "library", "file"];
 
 type Row = Readonly<Record<string, string>>;
 type Table = { readonly columns: readonly string[]; readonly rows: readonly Row[] };
 
-// the three sections, null for one the file does not have; a section with no table has no columns
+// every `## ` heading, then the three sections, null for one the file does not have; a section with no table has
+// no columns
 export type Stated = {
+  readonly headings: readonly string[];
   readonly responsibility: string | null;
   readonly products: Table | null;
   readonly takes: Table | null;
@@ -21,6 +25,14 @@ export type Has = {
   readonly locks: readonly string[];
   readonly docs: readonly string[];
 };
+
+// the text without its fenced code, where a line that starts with # is no heading, nor one with | a table's row: a
+// fence closes on its own mark, or at the end of the file
+const unfenced = (text: string): string =>
+  text.replace(/^ {0,3}(```|~~~)[\s\S]*?(?:^ {0,3}\1.*$|(?![\s\S]))/gm, "");
+
+const headingsOf = (lines: readonly string[]): readonly string[] =>
+  lines.flatMap((l) => /^##[ \t]+(.+?)\s*$/.exec(l)?.[1] ?? []);
 
 // a section's lines: from its heading to the next heading of its level or above, or the end
 const sectionOf = (lines: readonly string[], name: string): readonly string[] | null => {
@@ -60,11 +72,12 @@ const tableOf = (lines: readonly string[]): Table => {
 };
 
 export const statedOf = (text: string): Stated => {
-  const lines = text.split(/\r?\n/);
+  const lines = unfenced(text).split(/\r?\n/);
   const responsibility = sectionOf(lines, "Responsibility");
   const products = sectionOf(lines, "Products");
   const takes = sectionOf(lines, "Takes");
   return {
+    headings: headingsOf(lines),
     responsibility: responsibility === null ? null : responsibility.join("\n").trim(),
     products: products === null ? null : tableOf(products),
     takes: takes === null ? null : tableOf(takes),
@@ -82,10 +95,30 @@ const inside = (path: string): boolean =>
 export const docsOf = (s: Stated): readonly string[] =>
   (s.products?.rows ?? []).map((r) => cell(r, "Doc")).filter(inside);
 
+const sectionFaults = (s: Stated): readonly string[] =>
+  s.headings
+    .filter((h) => !SECTIONS.includes(h))
+    .map((h) => `## ${h}: not one of the sections ${SECTIONS.join(", ")}`);
+
 const columnFaults = (name: string, t: Table | null, want: readonly string[]): readonly string[] =>
   t === null
     ? [`## ${name}: missing`]
-    : want.filter((c) => !t.columns.includes(c)).map((c) => `## ${name}: no column ${c}`);
+    : [
+        ...want.filter((c) => !t.columns.includes(c)).map((c) => `## ${name}: no column ${c}`),
+        ...t.columns
+          .filter((c) => !want.includes(c))
+          .map((c) => `## ${name}: column "${c}" is not one of ${want.join(", ")}`),
+      ];
+
+const formFaults = (t: Table | null): readonly string[] =>
+  t === null || !t.columns.includes("Form")
+    ? []
+    : t.rows
+        .filter((r) => !FORMS.includes(cell(r, "Form")))
+        .map(
+          (r) =>
+            `## Products: ${cell(r, "Product")}: Form "${cell(r, "Form")}" is not one of ${FORMS.join(", ")}`,
+        );
 
 const docFaults = (t: Table | null, has: Has): readonly string[] =>
   t === null || !t.columns.includes("Doc")
@@ -123,8 +156,10 @@ export const faultsOf = (s: Stated, has: Has): readonly string[] => [
     : s.responsibility === ""
       ? ["## Responsibility: empty"]
       : []),
+  ...sectionFaults(s),
   ...columnFaults("Products", s.products, PRODUCT_COLUMNS),
   ...columnFaults("Takes", s.takes, TAKES_COLUMNS),
+  ...formFaults(s.products),
   ...docFaults(s.products, has),
   ...takesFaults(s.takes, has),
 ];
