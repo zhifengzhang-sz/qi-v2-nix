@@ -27,6 +27,7 @@ Work through the steps in order. If a step's check already passes, skip that ste
 | [9](#9-the-materials-project) | The materials project | WSL |
 | [10](#10-the-book-project) | The book project | WSL |
 | [11](#11-ollama) | Ollama and its models | Windows and PowerShell |
+| [Working in a project](#working-in-a-project) | A project's shell, its tools in Claude Code and VS Code, and direnv | WSL |
 
 If something goes wrong, see [When something goes wrong](#when-something-goes-wrong). The section
 [What has been tested](#what-has-been-tested) says how far each step has been proven.
@@ -52,7 +53,7 @@ If something goes wrong, see [When something goes wrong](#when-something-goes-wr
   wsl -l -v
   ```
 
-- **About 60 GB of free disk space,** or about 35 GB without Ollama's models.
+- **About 50 GB of free disk space,** or about 25 GB without Ollama's models.
 - **Enough memory for WSL.** WSL gets half of the PC's memory by default, and a full Lean build uses up to 16 GB.
 - **A GPU with about 20 GB of memory,** but only if you want `make ask`.
 
@@ -66,7 +67,6 @@ You need a GitHub account, and the owner of the projects has to give that accoun
 | Packages | `chanlun-content` and `chanlun-query` | Each package's settings, Manage access |
 
 Repository access and package access are separate, so a developer needs both.
-
 
 ### Two kinds of terminal
 
@@ -129,9 +129,9 @@ ssh -T git@github.com
 
 ## 2. Update the firmware
 
-Do this before the heavy downloads in step 9, and back up anything you can't replace. Nix writes tens of thousands of small files very quickly,
-which is much heavier than normal use. That load has crashed Windows on a machine with old SSD firmware and an
-old BIOS. The cause there isn't confirmed yet, but updating costs little.
+Do this before the heavy downloads in step 9, and back up anything you can't replace. Nix writes tens of thousands
+of small files very quickly, which is much heavier than normal use. That load has crashed Windows on a machine with
+old SSD firmware and an old BIOS. The cause there isn't confirmed yet, but updating costs little.
 
 1. Update the SSD's firmware with the maker's tool, such as Samsung Magician. It restarts the PC.
 2. Update the motherboard's BIOS from the maker's support page.
@@ -425,11 +425,30 @@ Type the names exactly as shown. The projects compare model names letter for let
 curl -s http://localhost:11434/api/tags | python3 -c 'import sys,json; [print(m["name"]) for m in json.load(sys.stdin)["models"]]'
 ```
 
-## Extras
+## Working in a project
 
-| You want | What to do |
-|---|---|
-| The tools inside VS Code | Follow `docs/content.md`, The editor, in the materials project (direnv) |
+Each project has its own shell, which holds its tools. `make` stops outside it, so start your work there:
+
+```bash
+cd ~/dev/qi/github/qi-v2-chanlun-materials
+nix develop
+```
+
+Start Claude Code by typing `claude` in that shell, so it gets the project's tools. You can open VS Code without
+the shell, but its extensions won't find those tools. To give them the tools, run `code .` from the shell with no
+VS Code window open, because a running one keeps its old environment.
+
+direnv does this for you, loading a project's shell when you `cd` into it. Set it up once:
+
+```bash
+nix profile add nixpkgs#direnv nixpkgs#nix-direnv
+mkdir -p ~/.config/direnv
+echo 'source $HOME/.nix-profile/share/nix-direnv/direnvrc' >> ~/.config/direnv/direnvrc
+echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+```
+
+If you use zsh, use `direnv hook zsh` and `~/.zshrc` instead. Open a new terminal, run `direnv allow` once in each
+project, and add the VS Code extension `mkhl.direnv`.
 
 ## When something goes wrong
 
@@ -487,7 +506,7 @@ possible causes. If the dump file also fails to write, suspect the drive or its 
 | Nothing answers at `localhost:11434` | Ollama isn't running, or WSL isn't in mirrored mode | Start Ollama, then check step 3 |
 | A request to Ollama is reset, and its log shows `0xc0000417` | The Ollama server crashed and is restarting itself | Wait about 15 seconds and try again |
 | Nix downloads crawl | The site is slow from your network | Do step 5 |
-| A mirror returns `000` | The site can't be reached, often because of a VPN | Test again with the VPN off |
+| A mirror returns `000` | The site can't be reached, often because of a VPN | See step 5, A VPN can change which sites work |
 | `unable to download ... .narinfo: Timeout was reached` | A Nix mirror can't be reached, often because of a VPN | Wait, because Nix moves on to the next site; or use `make content-fetch` as in step 9 |
 
 To fix the model's letter case without downloading it again, keep a temporary copy while you rename it:
@@ -501,11 +520,12 @@ ollama rm qwen3-keep
 
 ## What has been tested
 
-Last updated 2026-10-31, from a setup on a Windows 11 Pro machine that already had WSL, Docker and a GitHub login.
+Last updated 2026-11-01, from a setup on a Windows 11 Pro machine that already had WSL, Docker and a GitHub login.
 Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 
 | Part | State |
 |---|---|
+| WSL install | Not run for this guide |
 | Step 1: adding `read:packages` to an existing `gh` login | Done and checked |
 | Step 1: `apt` install, fresh login and new SSH key | Not run for this guide |
 | Step 2: firmware and BIOS | SSD firmware updated, and the repair's heavy downloads then finished with no crash; BIOS not updated |
@@ -515,14 +535,14 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Step 6: Docker install | Not run for this guide |
 | Step 7: registry login and checks | Done and checked |
 | Step 8: clones | Done and checked |
-| Step 11: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
-| WSL install | Not run for this guide |
-| Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
 | Step 9: `nix develop` and `make install` | Done and checked; the content verified with 837 files, and no crash after the firmware update |
 | Step 9: `make content-fetch` | Tested only with the files already present; not yet on a real download |
 | Step 9: `make locks-check` | Done; it reported outdated locks, which is a report and not a failure |
 | Step 10: `nix develop`, `make install` and `make locks-check` | Done and checked; the store verified clean afterwards |
 | Step 10: `make about-pdfs` | Not run for this guide |
+| Step 11: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
+| Working in a project: direnv | Not run for this guide |
+| Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
 
 The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
 2026-10-21 without steps 3 and 6.
