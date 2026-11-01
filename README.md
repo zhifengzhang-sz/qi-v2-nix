@@ -9,8 +9,8 @@ project's `flake.lock`:
 | `kit/` | the kit: a project's spec of its agents (`agents/`) into each kind's files, Claude Code and Copilot (`kit/README.md`); built with `qi-v2`'s `nixpkgs` | `inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit";` and `inputs.kit.inputs.qi-v2.follows = "qi-v2";` |
 
 A project at one commit of this repository has the same tools as every other project at that commit; a newer
-one is taken by `nix flake update qi-v2 kit` in the project. Needs Nix 2.26 or later (the kit's input `../qi-v2`
-is a relative path within this repository).
+one is taken by `nix flake update qi-v2 kit` in the project, then `make install`, which relinks `dev/agents` and
+runs `make agents`. Needs Nix 2.26 or later (the kit's input `../qi-v2` is a relative path within this repository).
 
 Setting up a new machine from nothing, by hand: `SETUP.md`.
 

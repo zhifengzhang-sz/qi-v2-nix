@@ -14,6 +14,9 @@ the reasons.
   `inputs.materials.url = "git+ssh://git@github.com/zhifengzhang-sz/qi-v2-chanlun-materials";`
 - Its packages are run at the project's own pin: `nix run --inputs-from . materials#NAME`, never `github:…#NAME`
   (that takes the default branch, not the pin).
+- `nix build --inputs-from .` drops an input's `?dir=`, so an input taken from a folder, such as the kit, is built
+  from the reference in `flake.lock`, as the `KIT` variable in a project's Makefile does:
+  `github:<owner>/<repo>/<rev>?dir=<dir>`, each part read from the input's `locked`.
 
 Why: one lock for what Nix gives, so every machine and every person builds the same thing.
 
@@ -43,8 +46,8 @@ Why: a lock pins a version, and nothing else says when the source has gone on.
 - "Lock" means pinned, not frozen: a new version rewrites it, and committing it is the release.
 - Installing takes the files out with crane, as the person, adds them to the Nix store, and the flake's package
   finds each by its hash. An asset already in the store is not fetched again, so a new version costs only the
-  assets that changed. So data that changes often (market data) is to have assets of its own; in
-  `qi-v2-chanlun-materials` it does not yet (its market data is in one asset with the rest).
+  assets that changed. So data that changes often (market data) has assets of its own, as in
+  `qi-v2-chanlun-materials`.
 
 Why: GHCR gives access by each person's own GitHub login, with no key to hand out. Nix cannot fetch from GHCR
 itself, since its downloads run as its daemon, without the person's login: so crane fetches, and the lock tells Nix
@@ -80,8 +83,23 @@ Every project has `PRODUCTS.md` at its root, with exactly these sections:
 takes from it. It changes in the same commit as the change it describes. `make products-check` runs `kit products`,
 which fails, naming the fault, where the file and the project disagree.
 
+A project wires the check with this target, named in its `.PHONY`:
+
+```make
+products-check: ## whether PRODUCTS.md states what the project has (kit products)
+	@test -x dev/agents/bin/kit || { echo "products-check: no kit at dev/agents: make install"; exit 1; }
+	dev/agents/bin/kit products --root .
+```
+
+- `make verify` runs it for `PRODUCTS.md`, `flake.lock` and each root `*.lock` file, so the pre-commit hook enforces
+  the same-commit rule. A project with no `make verify` puts it in its `make check`.
+- A project with no `dev/agents` builds the kit from the reference in `flake.lock` (section 1):
+  `nix run "$(KIT)" -- products --root .`.
+- A project with no Makefile runs `kit products` directly.
+
 ## Taking them
 
 A project takes the kit (`inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit";`), then `nix flake update
-kit` and `make agents` whenever the kit moves: the shared rules come with it. The rest is the project's to do, as
-above; `qi-v2-chanlun-materials` does it all, and is the example to read.
+kit` and `make install` whenever the kit moves: `make install` relinks `dev/agents`, then runs `make agents`, so the
+shared rules come with it. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
+the example to read.
