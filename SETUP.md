@@ -260,9 +260,15 @@ Mirrors carry the same signed packages, so no new key is needed.
 nix config show substituters
 ```
 
-**A VPN can change which sites work.** On one tested network the mirrors reached 15 MB/s with the VPN off and
-timed out with it on, while `cache.nixos.org` reached 1 MB/s with the VPN on and 0.02 MB/s with it off. In a case
-like that, keep the VPN off for `nix develop` and turn it on for steps that reach GitHub if they are slow.
+**A VPN can change which sites work.** Many VPNs send everything through their tunnel, and a Nix mirror in your
+own country can then time out. If your VPN can split traffic, send local sites direct and foreign sites through
+the VPN, then run the test above again. In a working setup both kinds of site return `200`, the mirrors on your
+direct link and `cache.nixos.org` on the tunnel. The setting's name varies by VPN. In Astrill it's Only
+International Sites, under Settings, Site Filter. A VPN that can only exclude sites by address needs the mirrors'
+IP addresses, and those can change.
+
+If your VPN can't split traffic, switch it between steps: off for `nix develop`, and on for steps that reach
+GitHub if they're slow. Step 9 shows how to run the download apart from the install.
 
 ## 6. Docker
 
@@ -505,6 +511,7 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Step 2: firmware and BIOS | SSD firmware updated, and the repair's heavy downloads then finished with no crash; BIOS not updated |
 | Steps 3 and 4: networking, Nix and flakes | Done and checked |
 | Step 5: mirror test and `substituters` | Done and checked |
+| Step 5: a VPN that splits traffic | Done and checked with Astrill: mirrors direct at about 12 MB/s, `cache.nixos.org` through the VPN at about 3.8 MB/s |
 | Step 6: Docker install | Not run for this guide |
 | Step 7: registry login and checks | Done and checked |
 | Step 8: clones | Done and checked |
