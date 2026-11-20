@@ -1,9 +1,9 @@
 # qi-v2 (README.md): one pinned nixpkgs for every project, a pure shell (mkPureShell), and presets of tools a
-# shell uses: the TeX of the material's books, the toolchains of Haskell, Go, Rust and C++, and Lean. A project takes it
-# as an input by its release branch, release/qi-v2 (&ref=), at each release's commit (tagged qi-v2-<version>), pinned
-# by its own lock, and follows its nixpkgs (inputs.nixpkgs.follows = "qi-v2/nixpkgs"), so every project at the same
-# qi-v2 version has the same tools; a newer qi-v2 is taken by nix flake update qi-v2. `lib.version`: this release's
-# number, written alike in README.md, whose Changes has its entry.
+# shell uses: TeX for books set in Chinese and English, the toolchains of Haskell, Go, Rust and C++, and Lean. A
+# project takes it as an input by its release branch, release/qi-v2 (&ref=), at each release's commit (tagged
+# qi-v2-<version>), pinned by its own lock, and follows its nixpkgs (inputs.nixpkgs.follows = "qi-v2/nixpkgs"), so
+# every project at the same qi-v2 version has the same tools; a newer qi-v2 is taken by nix flake update qi-v2.
+# `lib.version`: this release's number, written alike in README.md, whose Changes has its entry.
 {
   description = "qi-v2: one nixpkgs for every project, a pure shell (lib.mkPureShell), and its presets (tex, haskell, go, rust, cpp, lean)";
 
@@ -94,7 +94,7 @@
       # after its path is made pure; QI_SHELL_NAME is the shell's name, so each tool's caches go under
       # ~/.cache/<name>/, never to the host's defaults.
 
-      # The TeX of the material's books, set as the book's editions are: ctex on LuaTeX (luatexja), TeX Gyre,
+      # TeX for books set in Chinese and English: ctex on LuaTeX (luatexja), TeX Gyre,
       # Erewhon with its maths, Fourier, latexmk, biber (biblatex's backend); and the fonts it sets (Source Han
       # Serif SC and Sans SC, JuliaMono), with the two variables by which TeX and fontconfig find them. `package`,
       # `fonts`: the parts.
@@ -231,6 +231,6 @@ export GOMODCACHE="$GOPATH/pkg/mod" GOCACHE="$HOME/.cache/$QI_SHELL_NAME/go-buil
         };
 
     in {
-      lib = { version = "1.0.1"; inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
+      lib = { version = "1.0.2"; inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
     };
 }

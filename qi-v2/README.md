@@ -1,6 +1,6 @@
 # qi-v2: one nixpkgs for every project, a pure shell, and its presets
 
-A flake of its own (`flake.nix`), version 1.0.1 (`lib.version`). It pins one `nixpkgs`; a project takes its releases
+A flake of its own (`flake.nix`), version 1.0.2 (`lib.version`). It pins one `nixpkgs`; a project takes its releases
 by the release branch and follows its `nixpkgs`, so every project at the same qi-v2 version has the same tools.
 
 ```nix
@@ -58,6 +58,7 @@ project.
 
 ## Changes
 
+- **1.0.2**: its comments name no other project (the `tex` preset is described by what it sets). The tools are 1.0.1's.
 - **1.0.1**: taken by the release branch, `release/qi-v2`, at each release's commit, so a project takes every release
   by `nix flake update qi-v2` (`&ref=release/qi-v2` once in its `flake.nix`); 1.0.0 was taken by its tag, which took an
   edit of `flake.nix` at every release. The tools are 1.0.0's.
