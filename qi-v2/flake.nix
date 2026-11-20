@@ -1,7 +1,9 @@
 # qi-v2 (README.md): one pinned nixpkgs for every project, a pure shell (mkPureShell), and presets of tools a
 # shell uses: the TeX of the material's books, the toolchains of Haskell, Go, Rust and C++, and Lean. A project takes it
-# as an input pinned by its own lock and follows its nixpkgs (inputs.nixpkgs.follows = "qi-v2/nixpkgs"), so every
-# project at the same qi-v2 version has the same tools; a newer qi-v2 is taken by bumping that lock.
+# as an input at a release's tag, qi-v2-<version> (?ref=), pinned by its own lock, and follows its nixpkgs
+# (inputs.nixpkgs.follows = "qi-v2/nixpkgs"), so every project at the same qi-v2 version has the same tools; a newer
+# qi-v2 is taken by its tag in the project's flake.nix, then nix flake update qi-v2. `lib.version`: this release's
+# number, written alike in README.md, whose Changes has its entry.
 {
   description = "qi-v2: one nixpkgs for every project, a pure shell (lib.mkPureShell), and its presets (tex, haskell, go, rust, cpp, lean)";
 
@@ -17,7 +19,7 @@
       # packages are unset. `uses`: presets (below), whose packages, variables and hooks join the shell's. On entry
       # it says what it is, runs `greeting`, names each of `needs` the machine lacks (`on`: "any", "wsl" or
       # "other"), runs `closing`, and marks the prompt with the name. `env`: the shell's variables. Every shell
-      # also has what the person at it types in any project: clear (ncurses), and of the host `personTools`.
+      # also has what the person at it types in any project: clear (ncurses), wget, and of the host `personTools`.
       # The host's tools are found on the host's path as the first entry found it (QI_HOST_PATH), so a shell
       # entered from inside another finds them too; each link is replaced by a rename, so a shell already open
       # never finds one missing. A pure shell's own links are never searched, so a shell entered from one that
@@ -39,7 +41,7 @@
             else line;
           presetEnv = lib.foldl' (a: u: a // (u.env or { })) { } uses;
         in pkgs.mkShell (presetEnv // env // {
-          packages = [ pkgs.ncurses ] ++ packages ++ lib.concatMap (u: u.packages or [ ]) uses;
+          packages = [ pkgs.ncurses pkgs.wget ] ++ packages ++ lib.concatMap (u: u.packages or [ ]) uses;
           shellHook = ''
             export QI_SHELL_NAME=${lib.escapeShellArg name}
             if [ -z "''${QI_HOST_PATH-}" ]; then export QI_HOST_PATH="$PATH"; fi
@@ -229,6 +231,6 @@ export GOMODCACHE="$GOPATH/pkg/mod" GOCACHE="$HOME/.cache/$QI_SHELL_NAME/go-buil
         };
 
     in {
-      lib = { inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
+      lib = { version = "1.0.0"; inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
     };
 }

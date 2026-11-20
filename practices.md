@@ -30,13 +30,16 @@ Why: one lock for what Nix gives, so every machine and every person builds the s
 
 Why: a lock pins a version, and nothing else says when the source has gone on.
 
-## 3. Publishing code: a flake package, one number
+## 3. Publishing code: a flake package or a library, one number
 
 - The product is a package of the project's `flake.nix`; a taker pins the project and takes the package.
 - One number a product: a product with a design of versions takes its design's (a design's version 1.8 is the
   package's 1.8.0), written alike in the design, `package.json` and the flake package, changed together.
 - Every release has its entry under Changes in the product's README.
 - The checks pass before the tag; the tag is `<product>-<version>`, which a taker can pin (`…?ref=qi-chart-1.8.0`).
+- A library (a flake's `lib`, no package) is released the same way: its number in `lib.version` and its README,
+  its entry under Changes, its tag; a taker pins the tag (`qi-v2`: `…?dir=qi-v2&ref=qi-v2-1.0.0`), and a change with
+  no tag reaches no taker.
 
 ## 4. Publishing private data: a GHCR image, pinned by its own lock
 

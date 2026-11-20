@@ -1,10 +1,10 @@
 # qi-v2: one nixpkgs for every project, a pure shell, and its presets
 
-A flake of its own (`flake.nix`). It pins one `nixpkgs`; a project follows it, so every project at the same qi-v2
-version has the same tools, and a newer qi-v2 is taken by bumping the project's own lock.
+A flake of its own (`flake.nix`), version 1.0.0 (`lib.version`). It pins one `nixpkgs`; a project takes a release
+by its tag and follows its `nixpkgs`, so every project at the same qi-v2 version has the same tools.
 
 ```nix
-inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2";
+inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2&ref=qi-v2-1.0.0";   # a release, by its tag
 inputs.nixpkgs.follows = "qi-v2/nixpkgs";      # the one nixpkgs
 
 devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
@@ -21,7 +21,7 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
 - **`lib.mkPureShell pkgs { … }`**: the shell's path holds the flake's tools and, of the host, only `hostTools`; any
   other command is not found, and the run stops. On entry it says what it is, names each of `needs` the machine
   lacks with what needs it, and marks the prompt with the name. Every shell also has what the person at it types
-  in any project: `clear` (ncurses), and of the host `sudo` (setuid, which the Nix store cannot hold), `code`,
+  in any project: `clear` (ncurses), `wget`, and of the host `sudo` (setuid, which the Nix store cannot hold), `code`,
   `claude`, `wslpath` (which `code`'s WSL launcher needs) and `docker` (the client of the machine's Docker engine, which runs a released image). The host's tools are found on the host's path as
   the first entry found it, so a shell entered from inside another (`nix develop` in `nix develop`, one project's
   shell from another's) finds them too; each link is replaced by a rename, so a shell already open never loses one.
@@ -41,4 +41,21 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
 
 A version other than the one nixpkgs a project needs is its own explicit input, in its own flake.
 
-A newer qi-v2 is taken by `nix flake update qi-v2` in the project; its lock then names the new commit.
+A newer qi-v2 is taken by its tag in the project's `flake.nix` (`?ref=qi-v2-<version>`), then `nix flake update
+qi-v2`; its lock then names the release's commit. `kit locks` says an input at a tag outdated once a newer
+`qi-v2-*` tag is pushed, and what to change.
+
+## A release
+
+One number, `<major>.<minor>.<patch>`, written alike in `lib.version` (`flake.nix`) and this README; a major
+release is one a project's shell may not build or behave the same with (a `nixpkgs` updated to another of its
+branches, a preset's tool removed or its cache moved, `mkPureShell` letting in fewer of the host's tools), a minor one
+adds (a preset, a tool, a `nixpkgs` updated on the same branch), a patch fixes. Its entry under Changes; every
+preset evaluated, with a shell using them all and a `releaseImage`, before the tag `qi-v2-<version>` is pushed. A
+change on `main` with no tag reaches no project.
+
+## Changes
+
+- **1.0.0**: the first release by number, as this README states it (`nixpkgs` nixos-26.05 at ac588ef1c9; Lean
+  4.35.0-rc3); a project took `main` before, each commit touching `qi-v2/` a release. New: `wget` in every shell,
+  beside `clear` (a pure shell found none, the host's being shut out).
