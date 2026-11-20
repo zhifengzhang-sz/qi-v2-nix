@@ -26,7 +26,9 @@ Why: one lock for what Nix gives, so every machine and every person builds the s
   project's own locks by its own check); each outdated lock is reported with what
   updates it, and none is updated without the owner's say.
 - An input taken from a folder of a repository (`?dir=…`) is judged by that folder: the repository moving does not
-  count unless the folder changed.
+  count unless the folder changed. Once the folder's product is released by tag (`<folder>-<version>`, as `qi-v2`
+  and `kit` are), an input that follows a branch is outdated whatever the folder did, and `kit locks` names the
+  newest tag: `&ref=<tag>` in `flake.nix`, then `nix flake update NAME`.
 
 Why: a lock pins a version, and nothing else says when the source has gone on.
 
@@ -102,7 +104,8 @@ products-check: ## whether PRODUCTS.md states what the project has (kit products
 
 ## Taking them
 
-A project takes the kit (`inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit";`), then `nix flake update
-kit` and `make install` whenever the kit moves: `make install` relinks `dev/agents`, then runs `make agents`, so the
-shared rules come with it. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
+A project takes the kit by its tag (`inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=kit-0.5.0";`)
+and a newer kit by the newer tag there, then `nix flake update kit` and `make install`: `make install` relinks
+`dev/agents`, then runs `make agents`, so the shared rules come with it. `kit locks` says when a newer kit is
+released. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
 the example to read.

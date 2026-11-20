@@ -14,8 +14,15 @@ const lock = JSON.stringify({
         local: "local",
         pinned: "pinned",
         contract: "contract",
+        lib: "lib",
         shared: ["kit", "nixpkgs"],
+        tools: ["lib", "nixpkgs"],
       },
+    },
+    lib: {
+      inputs: { nixpkgs: "nixpkgs" },
+      locked: { rev: "h".repeat(40), type: "github" },
+      original: { type: "github", owner: "o", repo: "r", dir: "qi-v2", ref: "qi-v2-1.0.0" },
     },
     kit: {
       inputs: { nixpkgs: "nixpkgs" },
@@ -50,15 +57,18 @@ describe("kit locks", () => {
     expect(inputs().map((i) => i.name)).toEqual([
       "contract",
       "kit",
+      "lib",
       "local",
       "nixpkgs",
       "pinned",
       "shared",
       "tool",
+      "tools",
     ]);
     expect(named("kit")).toEqual({
       name: "kit",
       through: null,
+      throughRef: null,
       url: "https://github.com/o/r",
       ref: "HEAD",
       rev: null,
@@ -83,6 +93,15 @@ describe("kit locks", () => {
       "it comes through kit: updated in its lock, then nix flake update kit",
     );
   });
+  it("says an input that comes by one at a release's tag is updated by a newer release, not nix flake update", () => {
+    const t = named("tools");
+    expect(t.through).toEqual(["lib", "nixpkgs"]);
+    expect(t.throughRef).toBe("qi-v2-1.0.0");
+    expect(named("shared").throughRef).toBe("HEAD");
+    expect(lineOf(t, "d".repeat(40), null)).toContain(
+      "it comes through lib: updated in its lock, then a release of qi-v2 after qi-v2-1.0.0, taken by its tag in flake.nix and nix flake update lib",
+    );
+  });
   it("judges a folder input by its folder: current where the folder did not change", () => {
     expect(lineOf(named("kit"), "d".repeat(40), 0)).toContain("its repository moved, kit/ not");
     expect(lineOf(named("kit"), "d".repeat(40), 2)).toContain("kit/ changed");
@@ -100,6 +119,30 @@ describe("kit locks", () => {
     expect(newer(c, ["chanlun-1.0.0", "chanlun-1.1.0", "other-9.0.0", "chanlun-2.0"])).toBeNull();
     expect(productOf(named("nixpkgs"))).toBeNull();
     expect(newer(named("nixpkgs"), ["nixos-26.05"])).toBeNull();
+  });
+  it("names a folder input that follows a branch by its folder, and finds the folder's newest release", () => {
+    const k = named("kit");
+    expect(productOf(k)).toBe("kit");
+    expect(newer(k, ["kit-0.4.1", "kit-0.10.0", "kit-0.5.0", "kit-1.0", "kitten-9.0.0"])).toBe("kit-0.10.0");
+    expect(newer(k, [])).toBeNull();
+    expect(newer(k, ["kitten-9.0.0", "kit-1.0"])).toBeNull();
+  });
+  it("says a folder input that follows a branch outdated once its product is released, whatever the branch did", () => {
+    const line =
+      "flake.lock kit: outdated: follows the default branch (aaaaaaaaaa), https://github.com/o/r: kit is released by tag, kit-0.5.0 the newest: &ref=kit-0.5.0 in flake.nix, then nix flake update kit";
+    expect(lineOf(named("kit"), "a".repeat(40), null, "kit-0.5.0")).toBe(line);
+    expect(lineOf(named("kit"), "d".repeat(40), null, "kit-0.5.0")).toBe(line);
+    expect(lineOf(named("kit"), "a".repeat(40), null, null)).toContain("current");
+  });
+  it("judges a folder input that follows a release's tag by its product's tags, the tag changed after ?dir= (&ref=)", () => {
+    const l = named("lib");
+    expect(productOf(l)).toBe("qi-v2");
+    expect(newer(l, ["qi-v2-1.0.0", "qi-v2-chanlun-2.0.0"])).toBeNull();
+    expect(newer(l, ["qi-v2-1.0.0", "qi-v2-1.1.0"])).toBe("qi-v2-1.1.0");
+    expect(lineOf(l, "h".repeat(40), null, null)).toContain("current");
+    expect(lineOf(l, "h".repeat(40), null, "qi-v2-1.1.0")).toContain(
+      "outdated: locked qi-v2-1.0.0 (hhhhhhhhhh), https://github.com/o/r: qi-v2-1.1.0 is released: &ref=qi-v2-1.1.0 in flake.nix, then nix flake update lib",
+    );
   });
   it("says an input that follows a release's tag outdated where a newer release is out, with how to take it", () => {
     const c = named("contract");

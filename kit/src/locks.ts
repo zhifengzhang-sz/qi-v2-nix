@@ -8,10 +8,11 @@ import { err, kitError, ok, type Result } from "./result.ts";
 // an input of the root, as git can ask its source: the repository, the branch or tag it follows, the commit the
 // flake itself names (`?rev=`, a pin no source moves), the commit locked, and the folder it is taken from, where it is
 // taken from one; an input that follows another's (`follows`) by the path it comes through, which is where it is
-// updated
+// updated, and the branch or tag that the input it comes by follows (`throughRef`)
 export type Input = {
   readonly name: string;
   readonly through: readonly string[] | null;
+  readonly throughRef: string | null;
   readonly url: string | null;
   readonly ref: string;
   readonly rev: string | null;
@@ -72,9 +73,11 @@ export const inputsOf = (text: string): Result<readonly Input[]> => {
       .map(([name, key]): Input => {
         const node = nodes[typeof key === "string" ? key : (follow(key) ?? "")];
         const o = node?.original;
+        const by = typeof key === "string" ? undefined : nodes[follow(key.slice(0, 1)) ?? ""];
         return {
           name,
           through: typeof key === "string" ? null : key,
+          throughRef: by === undefined ? null : (by.original?.ref ?? "HEAD"),
           url: source(o),
           ref: o?.ref ?? "HEAD",
           rev: o?.rev ?? null,
@@ -91,11 +94,20 @@ const release = (tag: string): { readonly product: string; readonly version: rea
   return m === null ? null : { product: m[1] ?? "", version: [m[2], m[3], m[4]].map(Number) };
 };
 
-// the product's newest release among the source's tags, where it is newer than the release the input follows; null
-// for an input that follows no release's tag. A tag does not move, so the release after it is what makes it outdated
+// the product an input's tags are asked by: the one its release's tag names; for an input that follows a branch from a
+// folder, the folder's, a repository of several products tagging each `<folder>-<version>` (as qi-v2-nix does qi-v2
+// and kit); null for any other input
+export const productOf = (i: Input): string | null =>
+  release(i.ref)?.product ?? (i.dir === null ? null : i.dir.replace(/\/+$/, ""));
+
+// the product's newest release among the source's tags: for an input that follows a release's tag, where it is newer
+// than that tag (a tag does not move, so the release after it is what makes it outdated); for one that follows a
+// branch from a folder, the newest there is (a product released by tag is taken by its tag, never its branch); null
+// where there is none, or the input has no product
 export const newer = (i: Input, tags: readonly string[]): string | null => {
+  const product = productOf(i);
+  if (product === null) return null;
   const at = release(i.ref);
-  if (at === null) return null;
   // whether version a is after version b, the first number that differs deciding
   const after = (a: readonly number[], b: readonly number[]): boolean => {
     const k = a.findIndex((x, n) => x !== b[n]);
@@ -104,17 +116,36 @@ export const newer = (i: Input, tags: readonly string[]): string | null => {
   const best = tags
     .flatMap((t) => {
       const r = release(t);
-      return r !== null && r.product === at.product ? [{ tag: t, version: r.version }] : [];
+      return r !== null && r.product === product ? [{ tag: t, version: r.version }] : [];
     })
-    .reduce((x, y) => (after(y.version, x.version) ? y : x), { tag: i.ref, version: at.version });
-  return best.tag === i.ref ? null : best.tag;
+    .reduce<{ readonly tag: string; readonly version: readonly number[] } | null>(
+      (x, y) => (x === null || after(y.version, x.version) ? y : x),
+      at === null ? null : { tag: i.ref, version: at.version },
+    );
+  return best === null || best.tag === i.ref ? null : best.tag;
 };
 
-// the product's tag prefix an input's tags are asked by, or null when it follows no release's tag
-export const productOf = (i: Input): string | null => release(i.ref)?.product ?? null;
+// where an input that follows another's is updated: in the lock it comes through, then taken by the input it comes by,
+// which, at a release's tag, does not move: a newer release of it is taken, by its tag
+const via = (through: readonly string[], ref: string | null): string => {
+  const at = ref === null ? null : release(ref);
+  return `it comes through ${through.slice(0, -1).join("/")}: updated in its lock, then ${
+    at === null
+      ? `nix flake update ${through[0]}`
+      : `a release of ${at.product} after ${ref}, taken by its tag in flake.nix and nix flake update ${through[0]}`
+  }`;
+};
+
+// where the input's ref is changed to a release's tag: in flake.nix (`?ref=`, `&ref=` after the folder's `?dir=`),
+// or, for an input that follows another's, in the lock it comes through
+const toTag = (i: Input, tag: string): string =>
+  i.through === null
+    ? `${i.dir === null ? "?" : "&"}ref=${tag} in flake.nix, then nix flake update ${i.name}`
+    : via(i.through, i.throughRef);
 
 // an input's line, given the commit its branch or tag is at, for an input taken from a folder how many of the files
-// changed since the locked commit are in that folder, and for an input that follows a release's tag the newer release
+// changed since the locked commit are in that folder, and the newest release (`newer`): for an input that follows a
+// branch, outdated whatever the branch did, its product being released
 export const lineOf = (
   i: Input,
   head: string | null,
@@ -125,20 +156,14 @@ export const lineOf = (
     ? `flake.lock ${i.name}: not asked (not a git or GitHub input)`
     : i.rev !== null
       ? `flake.lock ${i.name}: pinned (${i.rev.slice(0, 10)}, the flake's ?rev=): not asked; flake.nix changes it`
-      : head === i.locked && later !== null
-        ? `flake.lock ${i.name}: outdated: locked ${i.ref} (${i.locked.slice(0, 10)}), ${i.url}: ${later} is released: ${
-            i.through === null
-              ? `?ref=${later} in flake.nix, then nix flake update ${i.name}`
-              : `it comes through ${i.through.slice(0, -1).join("/")}: updated in its lock, then nix flake update ${i.through[0]}`
-          }`
-        : head === i.locked
-          ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
-          : i.dir !== null && inFolder === 0
-            ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
-            : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
-                i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
-              }: ${
-                i.through === null
-                  ? `nix flake update ${i.name}`
-                  : `it comes through ${i.through.slice(0, -1).join("/")}: updated in its lock, then nix flake update ${i.through[0]}`
-              }`;
+      : later !== null && release(i.ref) === null
+        ? `flake.lock ${i.name}: outdated: follows ${i.ref === "HEAD" ? "the default branch" : i.ref} (${i.locked.slice(0, 10)}), ${i.url}: ${productOf(i)} is released by tag, ${later} the newest: ${toTag(i, later)}`
+        : head === i.locked && later !== null
+          ? `flake.lock ${i.name}: outdated: locked ${i.ref} (${i.locked.slice(0, 10)}), ${i.url}: ${later} is released: ${toTag(i, later)}`
+          : head === i.locked
+            ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)})`
+            : i.dir !== null && inFolder === 0
+              ? `flake.lock ${i.name}: current (${i.locked.slice(0, 10)}; its repository moved, ${i.dir} not)`
+              : `flake.lock ${i.name}: outdated: locked ${i.locked.slice(0, 10)}, ${i.url}: ${
+                  i.dir === null ? `${i.ref} is at ${(head ?? "").slice(0, 10)}` : `${i.dir} changed`
+                }: ${i.through === null ? `nix flake update ${i.name}` : via(i.through, i.throughRef)}`;

@@ -29,6 +29,16 @@ rest:
 
 ## Changes
 
+- **0.5.0**: `kit locks`: an input taken from a folder (`?dir=…`) that follows a branch is outdated once the folder's
+  product is released by tag (`<folder>-<major>.<minor>.<patch>`, as `qi-v2-*` and `kit-*` are), whatever the branch
+  did, and its line names the newest tag and how to take it: `&ref=<tag>` in `flake.nix`, then `nix flake update
+  NAME`; such an input was judged by its folder, so a project kept taking `main`. The release's tags are asked first,
+  so a released folder needs no folder compare (no `gh`); a folder with no release is judged by its folder as before.
+  A tag after a folder's `?dir=` is changed as `&ref=` (the line said `?ref=`). An input that comes by one at a
+  release's tag (a project's `nixpkgs`, by `qi-v2` at `qi-v2-1.0.0`) is updated by a newer release of it, taken by its
+  tag (the line said `nix flake update qi-v2`, which does nothing at a tag). The shared rules: a lock is outdated
+  so; a library's number is in its `lib.version`; a product released by tag is taken by its tag, never its branch.
+  The kit itself is now taken by its tag (`?dir=kit&ref=kit-0.5.0`).
 - **0.4.1**: `kit products` holds to its rule: a Form other than flake package, image, library or file, a `##` section
   other than the three and a column other than those named are faults (they passed); a line in fenced code is no
   heading and no row. The kit is built with the `nixpkgs` of `qi-v2`, as this file says: `flake.lock` pinned an older
