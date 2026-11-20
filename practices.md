@@ -26,9 +26,11 @@ Why: one lock for what Nix gives, so every machine and every person builds the s
   project's own locks by its own check); each outdated lock is reported with what
   updates it, and none is updated without the owner's say.
 - An input taken from a folder of a repository (`?dir=…`) is judged by that folder: the repository moving does not
-  count unless the folder changed. Once the folder's product is released by tag (`<folder>-<version>`, as `qi-v2`
-  and `kit` are), an input that follows a branch is outdated whatever the folder did, and `kit locks` names the
-  newest tag: `&ref=<tag>` in `flake.nix`, then `nix flake update NAME`.
+  count unless the folder changed. Once the folder's product has a release branch (`release/<folder>`, as `qi-v2`
+  and `kit` have), an input that follows `main` or a tag is outdated whatever the folder did, and `kit locks` names
+  the change: `&ref=release/<folder>` in `flake.nix`, then `nix flake update NAME`. An input on the release branch is
+  outdated where a release moved it (`nix flake update NAME`; a major marked), and is not taken where the branch is at
+  a commit no release's tag names.
 
 Why: a lock pins a version, and nothing else says when the source has gone on.
 
@@ -38,10 +40,14 @@ Why: a lock pins a version, and nothing else says when the source has gone on.
 - One number a product: a product with a design of versions takes its design's (a design's version 1.8 is the
   package's 1.8.0), written alike in the design, `package.json` and the flake package, changed together.
 - Every release has its entry under Changes in the product's README.
-- The checks pass before the tag; the tag is `<product>-<version>`, which a taker can pin (`…?ref=qi-chart-1.8.0`).
+- The checks pass before the tag; the tag is `<product>-<version>`. Then the release branch, `release/<product>`, is
+  moved to it (`git push origin <product>-<version>^{commit}:refs/heads/release/<product>`), a fast forward.
+- A taker follows the release branch (`…?ref=release/qi-chart`), so each release comes by `nix flake update`, and its
+  `flake.nix` changes only to start following it; never `main`, whose commits are not all releases, nor a tag, which
+  does not move. An exact pin is `?rev=`.
 - A library (a flake's `lib`, no package) is released the same way: its number in `lib.version` and its README,
-  its entry under Changes, its tag; a taker pins the tag (`qi-v2`: `…?dir=qi-v2&ref=qi-v2-1.0.0`), and a change with
-  no tag reaches no taker.
+  its entry under Changes, its tag and its release branch; a taker follows the branch (`qi-v2`:
+  `…?dir=qi-v2&ref=release/qi-v2`), and a change not released reaches no taker.
 
 ## 4. Publishing private data: a GHCR image, pinned by its own lock
 
@@ -104,8 +110,8 @@ products-check: ## whether PRODUCTS.md states what the project has (kit products
 
 ## Taking them
 
-A project takes the kit by its tag (`inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=kit-0.5.0";`)
-and a newer kit by the newer tag there, then `nix flake update kit` and `make install`: `make install` relinks
-`dev/agents`, then runs `make agents`, so the shared rules come with it. `kit locks` says when a newer kit is
-released. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
+A project takes the kit by its release branch (`inputs.kit.url =
+"github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=release/kit";`), and a newer kit by `nix flake update kit` and `make
+install`: `make install` relinks `dev/agents`, then runs `make agents`, so the shared rules come with it. `kit locks`
+says when a newer kit is released. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
 the example to read.

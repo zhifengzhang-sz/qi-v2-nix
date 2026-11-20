@@ -5,15 +5,15 @@ project's `flake.lock`:
 
 | Flake | What it gives | Input |
 |---|---|---|
-| `qi-v2/` | one pinned `nixpkgs` for every project; `lib.mkPureShell`, a project's pure shell; `lib.releaseImage`, a released product as an image; the presets `tex`, `haskell`, `haskellLsp`, `go`, `rust`, `cpp`, `lean` (`qi-v2/README.md`) | `inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2&ref=qi-v2-1.0.0";` (a release, by its tag) and `inputs.nixpkgs.follows = "qi-v2/nixpkgs";` |
-| `kit/` | the kit: a project's spec of its agents (`agents/`) into each kind's files, Claude Code and Copilot (`kit/README.md`); built with `qi-v2`'s `nixpkgs` | `inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=kit-0.5.0";` (a release, by its tag) and `inputs.kit.inputs.qi-v2.follows = "qi-v2";` |
+| `qi-v2/` | one pinned `nixpkgs` for every project; `lib.mkPureShell`, a project's pure shell; `lib.releaseImage`, a released product as an image; the presets `tex`, `haskell`, `haskellLsp`, `go`, `rust`, `cpp`, `lean` (`qi-v2/README.md`) | `inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2&ref=release/qi-v2";` (each release, by its branch) and `inputs.nixpkgs.follows = "qi-v2/nixpkgs";` |
+| `kit/` | the kit: a project's spec of its agents (`agents/`) into each kind's files, Claude Code and Copilot (`kit/README.md`); built with `qi-v2`'s `nixpkgs` | `inputs.kit.url = "github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=release/kit";` (each release, by its branch) and `inputs.kit.inputs.qi-v2.follows = "qi-v2";` |
 
-A project at one release of `qi-v2` has the same tools as every other project at that release; a newer one is taken
-by its tag in the project's `flake.nix` (`&ref=qi-v2-<version>`), then `nix flake update qi-v2`. A newer kit is taken
-by its tag (`&ref=kit-<version>`), then `nix flake update kit` and `make install`, which relinks `dev/agents` and
-runs `make agents`. A project's `make locks-check` (`kit locks`) names each newer release, and an input still
-following `main`, with the change that takes it. Needs Nix 2.26 or later (the kit's input `../qi-v2` is a relative
-path within this repository).
+A project at one release of `qi-v2` has the same tools as every other project at that release. Each product is
+released by its tag, `<product>-<version>`, and its release branch, `release/<product>`, moved to the release's
+commit; a project follows the branch, so a newer `qi-v2` is taken by `nix flake update qi-v2`, and a newer kit by `nix
+flake update kit`, then `make install`, which relinks `dev/agents` and runs `make agents`. A project's `make
+locks-check` (`kit locks`) names each newer release, and an input still following `main` or a tag, with the change
+that takes it. Needs Nix 2.26 or later (the kit's input `../qi-v2` is a relative path within this repository).
 
 Setting up a new machine from nothing, by hand: `SETUP.md`.
 

@@ -29,6 +29,18 @@ rest:
 
 ## Changes
 
+- **0.6.0**: `kit locks` takes a product's release branch, `release/<product>`, moved to each release's commit, so a
+  project takes every release by `nix flake update` and edits `flake.nix` only to start following it. An input on its
+  release branch is current at the commit locked (the release it is, named), outdated where the branch moved to a
+  release (`nix flake update NAME`; a release whose major is after the locked one's marked "a major: see its
+  Changes"), and not taken where the branch is at a commit no `<product>-*` tag names. An input that follows `main` or
+  a tag is outdated once its product has a release branch: `&ref=release/<product>` in `flake.nix`, then `nix flake
+  update NAME` (0.5.0 said the newest tag, which took an edit of `flake.nix` at every release); an exact pin is
+  `?rev=`. Where a product has no release branch, a branch is judged by the newest tag and a tag by a newer, as before.
+  An input that comes by one on a release branch (a project's `nixpkgs`, by `qi-v2`) is updated by its next release,
+  by `nix flake update`. The tags and the branch are asked in one `git ls-remote`, each tag by its commit. The shared
+  rules: a lock is outdated so; a release moves its release branch, by which a project takes it. The kit is taken by
+  `?dir=kit&ref=release/kit`.
 - **0.5.0**: `kit locks`: an input taken from a folder (`?dir=…`) that follows a branch is outdated once the folder's
   product is released by tag (`<folder>-<major>.<minor>.<patch>`, as `qi-v2-*` and `kit-*` are), whatever the branch
   did, and its line names the newest tag and how to take it: `&ref=<tag>` in `flake.nix`, then `nix flake update

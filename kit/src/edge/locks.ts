@@ -5,7 +5,16 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type Input, inputsOf, lineOf, newer, productOf } from "../locks.ts";
+import {
+  byReleases,
+  type Input,
+  inputsOf,
+  lineOf,
+  noReleases,
+  productOf,
+  type Releases,
+  releasesOf,
+} from "../locks.ts";
 import { err, kitError, ok, type Result } from "../result.ts";
 import { tryAsync } from "./catch.ts";
 
@@ -56,10 +65,11 @@ const head = (i: Input): Result<string> => {
   return rev === undefined ? err(kitError("SOURCE_UNREACHABLE", i.url ?? "", `no ${i.ref}`)) : ok(rev);
 };
 
-// the tags of the input's product (`<product>-*`: the release it follows, or its folder's), by their names
-const tagsOf = (i: Input, product: string): Result<readonly string[]> => {
-  const r = remote(i, ["--tags", "--refs", `refs/tags/${product}-*`]);
-  return r.ok ? ok(r.value.map(([, name]) => name.replace(/^refs\/tags\//, ""))) : r;
+// the input's product's releases (`<product>-*` tags, each with its commit, and its release branch, release/<product>),
+// in one git ls-remote
+const releasesFrom = (i: Input, product: string): Result<Releases> => {
+  const r = remote(i, [`refs/tags/${product}-*`, `refs/heads/release/${product}`]);
+  return r.ok ? ok(releasesOf(r.value, product)) : r;
 };
 
 // how many of the files changed from the locked commit to the head are in the input's folder
@@ -89,15 +99,14 @@ export const locks = async (root: string): Promise<Result<readonly string[]>> =>
     if (i.url === null || i.locked === null || i.rev !== null) return ok(lineOf(i, null, null));
     const h = head(i);
     if (!h.ok) return h;
-    // the release's tags first: an input whose product is released by tag is judged by them, and its folder is
-    // then not compared (no gh needed)
+    // the product's releases first: an input judged by them has its folder not compared (no gh needed)
     const product = productOf(i);
-    const tags = product === null ? ok<readonly string[]>([]) : tagsOf(i, product);
-    if (!tags.ok) return tags;
-    const later = newer(i, tags.value);
-    if (later !== null || h.value === i.locked || i.dir === null) return ok(lineOf(i, h.value, null, later));
+    const r = product === null ? ok(noReleases) : releasesFrom(i, product);
+    if (!r.ok) return r;
+    if (byReleases(i, r.value) || h.value === i.locked || i.dir === null)
+      return ok(lineOf(i, h.value, null, r.value));
     const n = inFolder(i, h.value);
-    return n.ok ? ok(lineOf(i, h.value, n.value)) : n;
+    return n.ok ? ok(lineOf(i, h.value, n.value, r.value)) : n;
   });
   const failed = lines.find((l) => !l.ok);
   return failed !== undefined && !failed.ok ? failed : ok(lines.map((l) => (l.ok ? l.value : "")));
