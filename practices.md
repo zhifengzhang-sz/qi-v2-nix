@@ -104,8 +104,8 @@ which fails, naming the fault, where the file and the project disagree.
 
 What the shared rules assume a project has (the kit's README, What the shared rules assume) is, for the kit's part,
 the same in every project: these targets in its Makefile and these lines in its `.gitignore`. The project adds its
-own checks to `verify` and its own locks to `locks-check`, after the kit's. `make install` runs where `nix` is: a
-plain terminal in the project's folder, or a shell that lets in the host's `nix` (`hostTools`).
+own checks to `verify` and its own locks to `locks-check`, after the kit's. Every target runs in the project's shell;
+`make install` builds the kit with `nix`, so the shell lets in the host's `nix` (`hostTools = [ "nix" … ]`).
 
 ```make
 # the kit at the commit flake.lock names (section 1), read by nix when make install needs it
