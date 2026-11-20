@@ -94,24 +94,79 @@ Every project has `PRODUCTS.md` at its root, with exactly these sections:
 takes from it. It changes in the same commit as the change it describes. `make products-check` runs `kit products`,
 which fails, naming the fault, where the file and the project disagree.
 
-A project wires the check with this target, named in its `.PHONY`:
+`make products-check` is one of the kit's targets (section 8).
+
+- `make verify` runs it where `PRODUCTS.md`, `flake.lock` or a root `*.lock` file is staged, so the pre-commit hook
+  enforces the same-commit rule.
+- A project with no `dev/agents` builds the kit from the reference in `flake.lock` (section 1):
+  `nix run "$(KIT)" -- products --root .`; one with no Makefile runs `kit products` directly.
+
+## 8. The kit's part of a project: its Makefile targets and what git ignores
+
+What the shared rules assume a project has (the kit's README, What the shared rules assume) is, for the kit's part,
+the same in every project: these targets in its Makefile, `jq` among its shell's packages (`KIT` reads `flake.lock`
+with it), and these lines in its `.gitignore`. The project adds its own checks to `verify` and its own locks to
+`locks-check`, after the kit's.
 
 ```make
+# the kit at the commit flake.lock names (section 1), linked at dev/agents by make install
+KIT := $(shell jq -r '.nodes[.nodes[.root].inputs.kit].locked | "github:\(.owner)/\(.repo)/\(.rev)?dir=\(.dir)"' flake.lock)
+NEEDKIT = @test -x dev/agents/bin/kit || { echo "$@: no kit at dev/agents: make install"; exit 1; }
+
+.PHONY: install agents run-start run-check locks-check products-check verify
+
+install: ## the kit at dev/agents, the pre-commit hook that runs make verify, then make agents
+	mkdir -p dev && nix build "$(KIT)" -o dev/agents
+	hook=$$(git rev-parse --git-path hooks/pre-commit) && printf '#!/bin/sh\nexec make verify\n' > "$$hook" && chmod +x "$$hook"
+	$(MAKE) agents
+
+agents: ## each kind's files from agents/ (kit generate)
+	$(NEEDKIT)
+	dev/agents/bin/kit generate
+
+run-start: ## before a role's run, ROLE=<role> (kit run-start)
+	$(NEEDKIT)
+	dev/agents/bin/kit run-start --role "$(ROLE)"
+
+run-check: ## after it, ROLE=<role>, FILES=<a,b> for a role that writes them (kit run-check)
+	$(NEEDKIT)
+	dev/agents/bin/kit run-check --role "$(ROLE)" $(if $(FILES),--files "$(FILES)")
+
+locks-check: ## whether each lock's source has moved past it (kit locks; then the project's own locks)
+	$(NEEDKIT)
+	dev/agents/bin/kit locks --root .
+
 products-check: ## whether PRODUCTS.md states what the project has (kit products)
-	@test -x dev/agents/bin/kit || { echo "products-check: no kit at dev/agents: make install"; exit 1; }
+	$(NEEDKIT)
 	dev/agents/bin/kit products --root .
+
+verify: ## the checks for what is staged, run by the pre-commit hook (then the project's own checks)
+	@if git diff --cached --name-only | grep -qE '^(PRODUCTS\.md|[^/]+\.lock)$$'; then $(MAKE) products-check; fi
 ```
 
-- `make verify` runs it for `PRODUCTS.md`, `flake.lock` and each root `*.lock` file, so the pre-commit hook enforces
-  the same-commit rule. A project with no `make verify` puts it in its `make check`.
-- A project with no `dev/agents` builds the kit from the reference in `flake.lock` (section 1):
-  `nix run "$(KIT)" -- products --root .`.
-- A project with no Makefile runs `kit products` directly.
+```gitignore
+# the kit's: its link, the files make agents generates, a developer's own choices, a role's run in progress
+/dev/agents
+/AGENTS.md
+/CLAUDE.md
+/.claude/agents/
+/.claude/workflows/
+/.github/agents/
+/.github/hooks/kit.json
+/agents.generated
+/agents.local.json
+/agents.run/
+/.reports/
+```
+
+- `make install` replaces the project's pre-commit hook with the one that runs `make verify`; a project with a hook of
+  its own puts it in `verify`.
+- `agents/` is the project's own (its rules, roles and stages: the kit's README, What `agents/` holds), and so are
+  `docs/opening.md`, `docs/milestones.md`, `docs/designs/` and `docs/decisions.md`.
 
 ## Taking them
 
 A project takes the kit by its release branch (`inputs.kit.url =
 "github:zhifengzhang-sz/qi-v2-nix?dir=kit&ref=release/kit";`), and a newer kit by `nix flake update kit` and `make
 install`: `make install` relinks `dev/agents`, then runs `make agents`, so the shared rules come with it. `kit locks`
-says when a newer kit is released. The rest is the project's to do, as above; `qi-v2-chanlun-materials` does it all, and is
-the example to read.
+says when a newer kit is released. The rest is the project's to do, as above: section 8 is the kit's part of it.
