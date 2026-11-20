@@ -11,7 +11,7 @@ own flake.
 
 | Product | What | Form | Version | Release | Doc |
 |---|---|---|---|---|---|
-| `qi-v2` | the flake of one pinned `nixpkgs`, `lib.mkPureShell`, the presets and `releaseImage` | library | 1.0.0 | tag `qi-v2-<version>` | `qi-v2/README.md` |
+| `qi-v2` | the flake of one pinned `nixpkgs`, `lib.mkPureShell`, the presets and `releaseImage` | library | 1.0.1 | tag `qi-v2-<version>`, branch `release/qi-v2` | `qi-v2/README.md` |
 | `kit` | the flake of the kit: a project's `agents/` into each kind's files, `kit locks`, `kit products`, the shared rules | flake package | 0.5.0 | tag `kit-<version>` | `kit/README.md` |
 | `practices.md` | how every project takes what it needs and publishes what it makes | file | none | `main` | `practices.md` |
 | `SETUP.md` | setting up a new machine by hand | file | none | `main` | `SETUP.md` |

@@ -1,10 +1,10 @@
 # qi-v2: one nixpkgs for every project, a pure shell, and its presets
 
-A flake of its own (`flake.nix`), version 1.0.0 (`lib.version`). It pins one `nixpkgs`; a project takes a release
-by its tag and follows its `nixpkgs`, so every project at the same qi-v2 version has the same tools.
+A flake of its own (`flake.nix`), version 1.0.1 (`lib.version`). It pins one `nixpkgs`; a project takes its releases
+by the release branch and follows its `nixpkgs`, so every project at the same qi-v2 version has the same tools.
 
 ```nix
-inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2&ref=qi-v2-1.0.0";   # a release, by its tag
+inputs.qi-v2.url = "github:zhifengzhang-sz/qi-v2-nix?dir=qi-v2&ref=release/qi-v2";   # each release, by its branch
 inputs.nixpkgs.follows = "qi-v2/nixpkgs";      # the one nixpkgs
 
 devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
@@ -41,9 +41,9 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
 
 A version other than the one nixpkgs a project needs is its own explicit input, in its own flake.
 
-A newer qi-v2 is taken by its tag in the project's `flake.nix` (`?ref=qi-v2-<version>`), then `nix flake update
-qi-v2`; its lock then names the release's commit. `kit locks` says an input at a tag outdated once a newer
-`qi-v2-*` tag is pushed, and what to change.
+A newer qi-v2 is taken by `nix flake update qi-v2`: `release/qi-v2` is at the newest release, and the project's lock
+then names its commit. `kit locks` says the input outdated once a release moves the branch, marking a major, and says
+an input that follows `main` or a tag outdated, to follow the branch (`&ref=release/qi-v2`); an exact pin is `?rev=`.
 
 ## A release
 
@@ -51,11 +51,16 @@ One number, `<major>.<minor>.<patch>`, written alike in `lib.version` (`flake.ni
 release is one a project's shell may not build or behave the same with (a `nixpkgs` updated to another of its
 branches, a preset's tool removed or its cache moved, `mkPureShell` letting in fewer of the host's tools), a minor one
 adds (a preset, a tool, a `nixpkgs` updated on the same branch), a patch fixes. Its entry under Changes; every
-preset evaluated, with a shell using them all and a `releaseImage`, before the tag `qi-v2-<version>` is pushed. A
-change on `main` with no tag reaches no project.
+preset evaluated, with a shell using them all and a `releaseImage`, before the tag `qi-v2-<version>` is pushed; then
+the release branch is moved to it, `git push origin qi-v2-<version>^{commit}:refs/heads/release/qi-v2` (a fast
+forward: a release's commit is on `main`, after the one before). A change on `main` that is not released reaches no
+project.
 
 ## Changes
 
+- **1.0.1**: taken by the release branch, `release/qi-v2`, at each release's commit, so a project takes every release
+  by `nix flake update qi-v2` (`&ref=release/qi-v2` once in its `flake.nix`); 1.0.0 was taken by its tag, which took an
+  edit of `flake.nix` at every release. The tools are 1.0.0's.
 - **1.0.0**: the first release by number, as this README states it (`nixpkgs` nixos-26.05 at ac588ef1c9; Lean
   4.35.0-rc3); a project took `main` before, each commit touching `qi-v2/` a release. New: `wget` in every shell,
   beside `clear` (a pure shell found none, the host's being shut out).
