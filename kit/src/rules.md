@@ -37,3 +37,4 @@ Every agent a role runs as, and the session too.
 - **One build at a time**: a role that builds is the only one building while it runs; a role that does not build runs no build.
 - **Nothing is committed or pushed** but by the session.
 - **A secret** (a key, a token, a credentials file) is never read, printed or committed; each project names its own.
+- **A private project is never named in a public one**: no name of a private project (its repository, its packages, its products, or a name standing for it) appears in a public project's files, its docs, code comments, tests and examples, nor in its commit messages; a placeholder (`<project>`, `example`) stands for it.

@@ -31,7 +31,7 @@ Cloud and code review [READ, repository-instructions page]: `.github/copilot-ins
 
 VSC [READ, VS Code instructions page]: `.github/copilot-instructions.md`; `AGENTS.md` (root; nested files experimental, `chat.useNestedAgentsMdFiles`, off by default); `CLAUDE.md` (Local harness also `.claude/CLAUDE.md`, `~/.claude/CLAUDE.md`, `CLAUDE.local.md`, when `chat.useClaudeMdFile` enabled); `.claude/rules` (`paths` instead of `applyTo`); `.github/instructions/*.instructions.md` with `applyTo` or `description`. Precedence: none; "Applicable instruction sources are additive", the page advises not to rely on order.
 
-[INFER] For this project: a root `CLAUDE.md` and an `AGENTS.md` are both read by all three surfaces; `AGENTS.md` is the safest common file. Nested CLAUDE.md files are read only in Git root and cwd by the CLI (so the materials folder CLAUDE.md is read only if cwd is there or it is the repo root).
+[INFER] For this project: a root `CLAUDE.md` and an `AGENTS.md` are both read by all three surfaces; `AGENTS.md` is the safest common file. Nested CLAUDE.md files are read only in Git root and cwd by the CLI (so a subfolder's CLAUDE.md is read only if cwd is there or it is the repo root).
 
 ## 2. Custom agents
 

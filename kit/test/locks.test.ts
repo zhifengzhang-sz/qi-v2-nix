@@ -52,7 +52,7 @@ const lock = JSON.stringify({
     tool: { locked: { rev: "c".repeat(40), type: "git" }, original: { type: "git", url: "ssh://git@h/x" } },
     contract: {
       locked: { rev: "g".repeat(40), type: "github" },
-      original: { type: "github", owner: "o", repo: "c", ref: "chanlun-1.1.0" },
+      original: { type: "github", owner: "o", repo: "c", ref: "widget-1.1.0" },
     },
     local: { locked: { type: "path" }, original: { type: "path", path: "./x" } },
     pinned: {
@@ -140,11 +140,11 @@ describe("kit locks", () => {
   });
   it("finds the newest release of the product an input's tag names, only where it is after the tag", () => {
     const c = named("contract");
-    expect(productOf(c)).toBe("chanlun");
-    expect(
-      newer(c, ["chanlun-1.0.0", "chanlun-1.1.0", "chanlun-1.2.0", "chanlun-1.10.0", "other-9.0.0"]),
-    ).toBe("chanlun-1.10.0");
-    expect(newer(c, ["chanlun-1.0.0", "chanlun-1.1.0", "other-9.0.0", "chanlun-2.0"])).toBeNull();
+    expect(productOf(c)).toBe("widget");
+    expect(newer(c, ["widget-1.0.0", "widget-1.1.0", "widget-1.2.0", "widget-1.10.0", "other-9.0.0"])).toBe(
+      "widget-1.10.0",
+    );
+    expect(newer(c, ["widget-1.0.0", "widget-1.1.0", "other-9.0.0", "widget-2.0"])).toBeNull();
     expect(productOf(named("nixpkgs"))).toBeNull();
     expect(newer(named("nixpkgs"), ["nixos-26.05"])).toBeNull();
   });
@@ -165,7 +165,7 @@ describe("kit locks", () => {
   it("judges a folder input that follows a release's tag by its product's tags, the tag changed after ?dir= (&ref=)", () => {
     const l = named("lib");
     expect(productOf(l)).toBe("qi-v2");
-    expect(newer(l, ["qi-v2-1.0.0", "qi-v2-chanlun-2.0.0"])).toBeNull();
+    expect(newer(l, ["qi-v2-1.0.0", "qi-v2-extra-2.0.0"])).toBeNull();
     expect(newer(l, ["qi-v2-1.0.0", "qi-v2-1.1.0"])).toBe("qi-v2-1.1.0");
     expect(lineOf(l, "h".repeat(40), null, rel(["qi-v2-1.0.0"]))).toContain("current");
     expect(lineOf(l, "h".repeat(40), null, rel(["qi-v2-1.0.0", "qi-v2-1.1.0"]))).toContain(
@@ -175,8 +175,8 @@ describe("kit locks", () => {
   it("says an input that follows a release's tag outdated where a newer release is out, with how to take it", () => {
     const c = named("contract");
     expect(lineOf(c, "g".repeat(40), null)).toContain("current");
-    expect(lineOf(c, "g".repeat(40), null, rel(["chanlun-1.2.0"]))).toContain(
-      "outdated: locked chanlun-1.1.0 (gggggggggg), https://github.com/o/c: chanlun-1.2.0 is released: ?ref=chanlun-1.2.0 in flake.nix, then nix flake update contract",
+    expect(lineOf(c, "g".repeat(40), null, rel(["widget-1.2.0"]))).toContain(
+      "outdated: locked widget-1.1.0 (gggggggggg), https://github.com/o/c: widget-1.2.0 is released: ?ref=widget-1.2.0 in flake.nix, then nix flake update contract",
     );
   });
   it("reads a product's releases from git ls-remote: each tag at its commit (an annotated one's ^{}), its release branch", () => {
@@ -185,10 +185,10 @@ describe("kit locks", () => {
         ["t".repeat(40), "refs/tags/qi-v2-1.0.0"],
         ["h".repeat(40), "refs/tags/qi-v2-1.0.0^{}"],
         ["i".repeat(40), "refs/tags/qi-v2-1.1.0"],
-        ["x".repeat(40), "refs/tags/qi-v2-chanlun-2.0.0"],
-        ["x".repeat(40), "refs/tags/qi-v2-chanlun-2.0.0^{}"],
+        ["x".repeat(40), "refs/tags/qi-v2-extra-2.0.0"],
+        ["x".repeat(40), "refs/tags/qi-v2-extra-2.0.0^{}"],
         ["i".repeat(40), "refs/heads/release/qi-v2"],
-        ["y".repeat(40), "refs/heads/release/qi-v2-chanlun"],
+        ["y".repeat(40), "refs/heads/release/qi-v2-extra"],
       ],
       "qi-v2",
     );

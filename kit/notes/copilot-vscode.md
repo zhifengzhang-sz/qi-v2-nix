@@ -45,7 +45,7 @@ Applicable instruction sources are additive; VS Code advises not relying on prec
 
 ## 4a. Tried by the owner (2026-10-16, the agent picker)
 
-Added by the material's session from the owner's report; [TRIED] the owner's own observation.
+Added from the owner's report; [TRIED] the owner's own observation.
 
 - The picker lists the seven agents the kit generated (`checker`, `reviewer`, `writer`, `editor`, `prover`, `lessons`, `researcher`), though `.github/agents/` and `.claude/agents/` are both ignored by git; the hover shows each role's `for` line. It does not show which of the two files it took. [TRIED]
 - With `reviewer` selected, asked to list its tools, the agent listed `apply_patch`, `bash`, `web_fetch`, `task` among twenty: the read-and-search restriction of either file (`tools: ["read","search"]`; `Read, Grep, Glob`) did not hold, or the selection did not switch the agent. Either way, a role's `writes: none` is not enforced in this harness; it is checked on the output. [TRIED]
