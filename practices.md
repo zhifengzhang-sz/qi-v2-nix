@@ -97,8 +97,9 @@ which fails, naming the fault, where the file and the project disagree.
 
 - `make verify` runs it where `PRODUCTS.md`, `flake.lock` or a root `*.lock` file is staged, so the pre-commit hook
   enforces the same-commit rule.
-- A project with no `dev/agents` builds the kit from the reference in `flake.lock` (section 1):
-  `nix run "$(KIT)" -- products --root .`; one with no Makefile runs `kit products` directly.
+- Where no `make install` has run (CI, a new machine), `make products-check` runs the kit from the reference in
+  `flake.lock` (section 1), `nix run "$(KIT)" -- products --root .`; a project with no Makefile runs `kit products`
+  directly.
 
 ## 8. The kit's part of a project: its Makefile targets and what git ignores
 
@@ -111,6 +112,8 @@ own checks to `verify` and its own locks to `locks-check`, after the kit's. Ever
 # the kit at the commit flake.lock names (section 1), read by nix when make install needs it
 KIT = $(shell nix eval --raw --impure --expr 'let l = builtins.fromJSON (builtins.readFile ./flake.lock); k = l.nodes.$${l.nodes.$${l.root}.inputs.kit}.locked; in "github:$${k.owner}/$${k.repo}/$${k.rev}?dir=$${k.dir}"')
 NEEDKIT = @test -x dev/agents/bin/kit || { echo "$@: no kit at dev/agents: make install"; exit 1; }
+# the kit for the checks: the one make install linked, else run from KIT (CI, or a machine before make install)
+KITRUN = $(if $(wildcard dev/agents/bin/kit),dev/agents/bin/kit,nix run "$(KIT)" --)
 
 .PHONY: install agents run-start run-check locks-check products-check verify
 
@@ -132,12 +135,10 @@ run-check: ## after it, ROLE=<role>, FILES=<a,b> for a role that writes them (ki
 	dev/agents/bin/kit run-check --role "$(ROLE)" $(if $(FILES),--files "$(FILES)")
 
 locks-check: ## whether each lock's source has moved past it (kit locks; then the project's own locks)
-	$(NEEDKIT)
-	dev/agents/bin/kit locks --root .
+	$(KITRUN) locks --root .
 
 products-check: ## whether PRODUCTS.md states what the project has (kit products)
-	$(NEEDKIT)
-	dev/agents/bin/kit products --root .
+	$(KITRUN) products --root .
 
 verify: ## the checks for what is staged, run by the pre-commit hook (then the project's own checks)
 	@if git diff --cached --name-only | grep -qE '^(PRODUCTS\.md|[^/]+\.lock)$$'; then $(MAKE) products-check; fi
