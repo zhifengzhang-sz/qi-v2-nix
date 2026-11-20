@@ -103,13 +103,13 @@ which fails, naming the fault, where the file and the project disagree.
 ## 8. The kit's part of a project: its Makefile targets and what git ignores
 
 What the shared rules assume a project has (the kit's README, What the shared rules assume) is, for the kit's part,
-the same in every project: these targets in its Makefile, `jq` among its shell's packages (`KIT` reads `flake.lock`
-with it), and these lines in its `.gitignore`. The project adds its own checks to `verify` and its own locks to
-`locks-check`, after the kit's.
+the same in every project: these targets in its Makefile and these lines in its `.gitignore`. The project adds its
+own checks to `verify` and its own locks to `locks-check`, after the kit's. `make install` runs where `nix` is: a
+plain terminal in the project's folder, or a shell that lets in the host's `nix` (`hostTools`).
 
 ```make
-# the kit at the commit flake.lock names (section 1), linked at dev/agents by make install
-KIT := $(shell jq -r '.nodes[.nodes[.root].inputs.kit].locked | "github:\(.owner)/\(.repo)/\(.rev)?dir=\(.dir)"' flake.lock)
+# the kit at the commit flake.lock names (section 1), read by nix when make install needs it
+KIT = $(shell nix eval --raw --impure --expr 'let l = builtins.fromJSON (builtins.readFile ./flake.lock); k = l.nodes.$${l.nodes.$${l.root}.inputs.kit}.locked; in "github:$${k.owner}/$${k.repo}/$${k.rev}?dir=$${k.dir}"')
 NEEDKIT = @test -x dev/agents/bin/kit || { echo "$@: no kit at dev/agents: make install"; exit 1; }
 
 .PHONY: install agents run-start run-check locks-check products-check verify
