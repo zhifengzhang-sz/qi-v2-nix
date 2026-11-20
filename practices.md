@@ -11,8 +11,8 @@ the reasons.
   `lean-toolchain` and `lake-manifest.json`), committed beside it; Nix gives the tools that read them.
 - A newer version: `nix flake update NAME`, then commit `flake.lock`.
 - Another of our projects (they are private) is pinned by SSH:
-  `inputs.materials.url = "git+ssh://git@github.com/zhifengzhang-sz/qi-v2-chanlun-materials";`
-- Its packages are run at the project's own pin: `nix run --inputs-from . materials#NAME`, never `github:…#NAME`
+  `inputs.example.url = "git+ssh://git@github.com/zhifengzhang-sz/example";`
+- Its packages are run at the project's own pin: `nix run --inputs-from . example#NAME`, never `github:…#NAME`
   (that takes the default branch, not the pin).
 - `nix build --inputs-from .` drops an input's `?dir=`, so an input taken from a folder, such as the kit, is built
   from the reference in `flake.lock`, as the `KIT` variable in a project's Makefile does:
@@ -42,7 +42,7 @@ Why: a lock pins a version, and nothing else says when the source has gone on.
 - Every release has its entry under Changes in the product's README.
 - The checks pass before the tag; the tag is `<product>-<version>`. Then the release branch, `release/<product>`, is
   moved to it (`git push origin <product>-<version>^{commit}:refs/heads/release/<product>`), a fast forward.
-- A taker follows the release branch (`…?ref=release/qi-chart`), so each release comes by `nix flake update`, and its
+- A taker follows the release branch (`…?ref=release/example`), so each release comes by `nix flake update`, and its
   `flake.nix` changes only to start following it; never `main`, whose commits are not all releases, nor a tag, which
   does not move. An exact pin is `?rev=`.
 - A library (a flake's `lib`, no package) is released the same way: its number in `lib.version` and its README,
@@ -57,8 +57,7 @@ Why: a lock pins a version, and nothing else says when the source has gone on.
 - "Lock" means pinned, not frozen: a new version rewrites it, and committing it is the release.
 - Installing takes the files out with crane, as the person, adds them to the Nix store, and the flake's package
   finds each by its hash. An asset already in the store is not fetched again, so a new version costs only the
-  assets that changed. So data that changes often (market data) has assets of its own, as in
-  `qi-v2-chanlun-materials`.
+  assets that changed. So data that changes often (market data) has assets of its own.
 
 Why: GHCR gives access by each person's own GitHub login, with no key to hand out. Nix cannot fetch from GHCR
 itself, since its downloads run as its daemon, without the person's login: so crane fetches, and the lock tells Nix

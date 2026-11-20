@@ -1,7 +1,8 @@
 # Setting up a new machine
 
 This guide takes a Windows 11 PC with WSL 2 to a working qi-v2 setup, by hand. It covers Git, GitHub access, Nix,
-the two chanlun projects and Ollama. Each step says where to run it, what to type and how to tell that it worked.
+Docker, GitHub's package registry, a project's shell and Ollama; what a project needs beyond that is in its own
+README. Each step says where to run it, what to type and how to tell that it worked.
 
 **You don't need to clone this repository.** Read this page on GitHub, at
 <https://github.com/zhifengzhang-sz/qi-v2-nix/blob/main/SETUP.md>. The projects fetch what they need from this
@@ -15,7 +16,7 @@ Work through the steps in order. If a step's check already passes, skip that ste
 
 | Step | What it sets up | Where you run it |
 |---|---|---|
-| [First](#what-you-need-first) | Windows 11, WSL 2 and access to the private projects | Windows and GitHub |
+| [First](#what-you-need-first) | Windows 11, WSL 2 and access to the projects you work on | Windows and GitHub |
 | [1](#1-git-and-the-github-cli) | Git, the GitHub CLI and your GitHub login | WSL |
 | [2](#2-update-the-firmware) | SSD firmware and BIOS | Windows |
 | [3](#3-systemd-and-mirrored-networking) | systemd and mirrored networking | WSL and Windows |
@@ -23,10 +24,8 @@ Work through the steps in order. If a step's check already passes, skip that ste
 | [5](#5-a-faster-download-site-for-nix) | A faster download site for Nix, if you need one | WSL |
 | [6](#6-docker) | Docker | WSL |
 | [7](#7-githubs-package-registry) | The login to GitHub's package registry | WSL |
-| [8](#8-clone-the-projects) | The two projects | WSL |
-| [9](#9-the-materials-project) | The materials project | WSL |
-| [10](#10-the-book-project) | The book project | WSL |
-| [11](#11-ollama) | Ollama and its models | Windows and PowerShell |
+| [8](#8-a-project) | A project: its clone, its shell, `make install` and `make locks-check` | WSL |
+| [9](#9-ollama) | Ollama, for a project that uses it | Windows and PowerShell |
 | [Working in a project](#working-in-a-project) | A project's shell, its tools in Claude Code and VS Code, and direnv | WSL |
 
 If something goes wrong, see [When something goes wrong](#when-something-goes-wrong). The section
@@ -53,20 +52,20 @@ If something goes wrong, see [When something goes wrong](#when-something-goes-wr
   wsl -l -v
   ```
 
-- **About 50 GB of free disk space,** or about 25 GB without Ollama's models.
-- **Enough memory for WSL.** WSL gets half of the PC's memory by default, and a full Lean build uses up to 16 GB.
-- **A GPU with about 20 GB of memory,** but only if you want `make ask`.
+- **About 25 GB of free disk space** for Nix and a project's tools, and more for a project's own data or models.
+- **Enough memory for WSL.** WSL gets half of the PC's memory by default, and a large Lean build uses up to 16 GB.
 
 ### On GitHub
 
-You need a GitHub account, and the owner of the projects has to give that account read access to these:
+You need a GitHub account. For a private project, its owner gives that account read access:
 
-| Kind | Names | Where the owner grants it |
-|---|---|---|
-| Repositories | `qi-v2-chanlun-materials` and `qi-v2-chanlun` | The repository's Settings, Collaborators |
-| Packages | `chanlun-content` and `chanlun-query` | Each package's settings, Manage access |
+| Kind | Where the owner grants it |
+|---|---|
+| The repository | The repository's Settings, Collaborators |
+| Each of its packages on GHCR | Each package's settings, Manage access |
 
-Repository access and package access are separate, so a developer needs both.
+Repository access and package access are separate, so a developer needs both. The project's README names what it
+needs.
 
 ### Two kinds of terminal
 
@@ -129,7 +128,7 @@ ssh -T git@github.com
 
 ## 2. Update the firmware
 
-Do this before the heavy downloads in step 9, and back up anything you can't replace. Nix writes tens of thousands
+Do this before the heavy downloads of step 8, and back up anything you can't replace. Nix writes tens of thousands
 of small files very quickly, which is much heavier than normal use. That load has crashed Windows on a machine with
 old SSD firmware and an old BIOS. The cause there isn't confirmed yet, but updating costs little.
 
@@ -268,11 +267,12 @@ International Sites, under Settings, Site Filter. A VPN that can only exclude si
 IP addresses, and those can change.
 
 If your VPN can't split traffic, switch it between steps: off for `nix develop`, and on for steps that reach
-GitHub if they're slow. Step 9 shows how to run the download apart from the install.
+GitHub if they're slow.
 
 ## 6. Docker
 
-**Why:** the query tools run a released image.
+**Why:** a released product runs as an image (`qi-v2`'s `releaseImage`), and every project's shell lets in the
+host's `docker`.
 
 This installs Docker Engine inside Ubuntu and lets you run it without `sudo`:
 
@@ -292,7 +292,7 @@ docker info >/dev/null && echo ok
 
 ## 7. GitHub's package registry
 
-The projects' data and tools are private images on GitHub's registry, GHCR. `crane` reads them, and it comes from
+A project's data and tools can be private images on GitHub's registry, GHCR. `crane` reads them, and it comes from
 Nix. This logs it in with your `gh` login from step 1:
 
 ```bash
@@ -302,124 +302,70 @@ gh auth token | nix run nixpkgs#crane -- auth login ghcr.io -u "$(gh api user --
 `crane` warns that the login is stored unencrypted in `~/.docker/config.json`. That's expected, and Docker uses the
 same login.
 
-**Check:** this lists image tags.
+**Check:** this lists the tags of a package your account can read, named in the project's README.
 
 ```bash
-nix run nixpkgs#crane -- ls ghcr.io/zhifengzhang-sz/chanlun-content
+nix run nixpkgs#crane -- ls ghcr.io/zhifengzhang-sz/<package>
 ```
 
 `UNAUTHORIZED: authentication required` means the registry login is missing. A refusal after a successful login
 means the account hasn't been given access to that package.
 
-## 8. Clone the projects
+## 8. A project
 
-The folder can be anywhere. The book reaches the materials through its flake, not through a path.
+The folder can be anywhere: a project reaches the others through its flake, not through a path.
 
 ```bash
 mkdir -p ~/dev/qi/github
 cd ~/dev/qi/github
-git clone git@github.com:zhifengzhang-sz/qi-v2-chanlun-materials.git
-git clone git@github.com:zhifengzhang-sz/qi-v2-chanlun.git
+git clone git@github.com:zhifengzhang-sz/<project>.git
 ```
 
-`Repository not found` means your account hasn't been given access yet. See [On GitHub](#on-github).
+`Repository not found` means your account hasn't been given access yet. See [On GitHub](#on-github). A private
+repository needs the `git@github.com:` form shown here; an `https://` address stops and asks for a username.
 
-Private repositories need the `git@github.com:` form shown here. An `https://` address stops and asks for a username.
-
-## 9. The materials project
-
-Keep the terminal open until these finish. The first `nix develop` downloads a few GB, and it can show little
-progress while it does.
+Keep the terminal open while the shell is made. A project's first `nix develop` can download a few GB, and it can
+show little progress while it does.
 
 ```bash
-cd ~/dev/qi/github/qi-v2-chanlun-materials
+cd <project>
 nix develop
 ```
 
-The prompt now shows `(materials)`. Run the rest inside that shell, because `make` stops outside it.
-
-The shell may say `content ... not installed`, which the next commands fix. It may also say `ollama is not on this
-machine`. That's harmless when Ollama runs on Windows, because the tools reach it through `localhost`.
-
-`make install` downloads the content from GHCR and then asks Nix's download sites for packages. If one network
-reaches both, this is all you need:
+The prompt now shows the project's name. Run the rest inside that shell, because `make` stops outside it. The shell
+may say that a tool, such as `ollama`, is not on this machine; that's harmless when Ollama runs on Windows (step 9),
+because WSL reaches it through `localhost`.
 
 ```bash
 make install
 make locks-check
 ```
 
-If it doesn't, such as when GHCR needs a VPN and your Nix mirrors time out through it, run the two parts apart. Turn
-the VPN on for the download:
+`make install` links the kit at `dev/agents`, sets git's pre-commit hook and writes the agent files (`practices.md`,
+section 8); the project's README says what else its install does, and what else its setup needs. `make
+locks-check` asks GitHub about each lock and prints nothing until it has the answers, so it can look stuck on a
+slow connection. Give it time before stopping it.
 
-```bash
-make content-fetch
-```
-
-Then turn it off for the rest. `make install` finds the downloaded files and doesn't contact GHCR again.
-
-```bash
-make install
-make locks-check
-```
-
-`make install` puts the content into the Nix store and links it as `.content`. It also sets git's hooks and
-writes the agent files.
-
-**Check:** `.content` exists, and `make locks-check` prints one line for each lock.
-
-```bash
-ls -d .content
-```
-
-An `outdated` line is a report, not a failure. Don't update a lock unless you mean to.
+**Check:** `make locks-check` prints one line for each lock. An `outdated` line is a report, not a failure. Don't
+update a lock unless you mean to.
 
 `docs/opening.md` says where the work stands. Type `exit` to leave the shell.
 
-## 10. The book project
+## 9. Ollama
 
-```bash
-cd ~/dev/qi/github/qi-v2-chanlun
-nix develop
-```
+Only for a project that uses it; its README names the models it needs.
 
-The prompt now shows `(book)`. Inside that shell:
-
-```bash
-make install
-make locks-check
-```
-
-The first `nix develop` here fetches the private materials repository from GitHub over SSH. If it stalls there, turn
-the VPN on until that passes. The book uses the same content as the materials project, so `make install` doesn't
-download it again.
-
-`make locks-check` asks GitHub about each lock and prints nothing until it has the answers, so it can look stuck on
-a slow connection. Give it time before stopping it.
-
-**Check:** this builds the two About PDFs in `tex/`.
-
-```bash
-make about-pdfs
-```
-
-## 11. Ollama
-
-Ollama is only needed for `make ask`, search by meaning, and making vectors. Everything else works without it.
-
-Install the latest version from <https://ollama.com/download> and start it. Then pull the two models. They come
-to about 23 GB.
+Install the latest version from <https://ollama.com/download> on Windows and start it. WSL reaches it at
+`localhost`, through mirrored networking (step 3). Then pull each model the project names:
 
 ```powershell
-ollama pull Qwen3-Embedding
-ollama pull gemma4:26b
+ollama pull <model>
 ```
 
-Type the names exactly as shown. The projects compare model names letter for letter, so a lowercase
-`qwen3-embedding` works in Ollama but the project reports it as missing.
+Type each name exactly as the project gives it. A project may compare model names letter for letter, so a name in
+another letter case works in Ollama but the project reports it as missing.
 
-**Check:** run this in WSL. It lists both models, and `ollama list` in PowerShell shows the ID `64b933495768` for
-`Qwen3-Embedding`, which is the version the project pins.
+**Check:** run this in WSL. It lists the models you pulled.
 
 ```bash
 curl -s http://localhost:11434/api/tags | python3 -c 'import sys,json; [print(m["name"]) for m in json.load(sys.stdin)["models"]]'
@@ -430,7 +376,7 @@ curl -s http://localhost:11434/api/tags | python3 -c 'import sys,json; [print(m[
 Each project has its own shell, which holds its tools. `make` stops outside it, so start your work there:
 
 ```bash
-cd ~/dev/qi/github/qi-v2-chanlun-materials
+cd ~/dev/qi/github/<project>
 nix develop
 ```
 
@@ -502,20 +448,20 @@ possible causes. If the dump file also fails to write, suspect the drive or its 
 | `make` stops with a message about the shell | You are outside `nix develop` | Run `nix develop` first |
 | `Git tree ... is dirty` | The clone has uncommitted changes | Nothing, it's harmless |
 | `pull model manifest: 412` | Ollama is too old for that model | Update Ollama |
-| `Ollama lacks Qwen3-Embedding`, though the model is installed | The model was pulled with the wrong letter case | See below |
+| A project says a model is missing, though it is installed | The model was pulled in another letter case | See below |
 | Nothing answers at `localhost:11434` | Ollama isn't running, or WSL isn't in mirrored mode | Start Ollama, then check step 3 |
 | A request to Ollama is reset, and its log shows `0xc0000417` | The Ollama server crashed and is restarting itself | Wait about 15 seconds and try again |
 | Nix downloads crawl | The site is slow from your network | Do step 5 |
 | A mirror returns `000` | The site can't be reached, often because of a VPN | See step 5, A VPN can change which sites work |
-| `unable to download ... .narinfo: Timeout was reached` | A Nix mirror can't be reached, often because of a VPN | Wait, because Nix moves on to the next site; or use `make content-fetch` as in step 9 |
+| `unable to download ... .narinfo: Timeout was reached` | A Nix mirror can't be reached, often because of a VPN | Wait, because Nix moves on to the next site |
 
 To fix the model's letter case without downloading it again, keep a temporary copy while you rename it:
 
 ```powershell
-ollama cp qwen3-embedding qwen3-keep
-ollama rm qwen3-embedding
-ollama pull Qwen3-Embedding
-ollama rm qwen3-keep
+ollama cp <name-as-pulled> keep-copy
+ollama rm <name-as-pulled>
+ollama pull <name-as-the-project-gives-it>
+ollama rm keep-copy
 ```
 
 ## What has been tested
@@ -534,15 +480,7 @@ Windows 11 Home is supported by WSL but hasn't been tried with this guide.
 | Step 5: a VPN that splits traffic | Done and checked with Astrill: mirrors direct at about 12 MB/s, `cache.nixos.org` through the VPN at about 3.8 MB/s |
 | Step 6: Docker install | Not run for this guide |
 | Step 7: registry login and checks | Done and checked |
-| Step 8: clones | Done and checked |
-| Step 9: `nix develop` and `make install` | Done and checked; the content verified with 837 files, and no crash after the firmware update |
-| Step 9: `make content-fetch` | Tested only with the files already present; not yet on a real download |
-| Step 9: `make locks-check` | Done; it reported outdated locks, which is a report and not a failure |
-| Step 10: `nix develop`, `make install` and `make locks-check` | Done and checked; the store verified clean afterwards |
-| Step 10: `make about-pdfs` | Not run for this guide |
-| Step 11: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
+| Step 8: clone, `nix develop`, `make install` and `make locks-check` | Done and checked with particular projects' own setups; not yet in this general form |
+| Step 9: Ollama update and models | Done; on Ollama 0.40.13 the server crashed during some embedding requests |
 | Working in a project: direnv | Not run for this guide |
 | Store check and repair commands | Done and checked: the repair restored 249 damaged packages |
-
-The materials project's own setup, the source of steps 4 and 9, passed on an empty Ubuntu 24.04 under WSL on
-2026-10-21 without steps 3 and 6.
