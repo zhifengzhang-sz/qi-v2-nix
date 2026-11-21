@@ -1,6 +1,6 @@
 # qi-v2: one nixpkgs for every project, a pure shell, and its presets
 
-A flake of its own (`flake.nix`), version 1.0.2 (`lib.version`). It pins one `nixpkgs`; a project takes its releases
+A flake of its own (`flake.nix`), version 1.1.0 (`lib.version`). It pins one `nixpkgs`; a project takes its releases
 by the release branch and follows its `nixpkgs`, so every project at the same qi-v2 version has the same tools.
 
 ```nix
@@ -22,7 +22,9 @@ devShells.x86_64-linux.default = qi-v2.lib.mkPureShell pkgs {
   other command is not found, and the run stops. On entry it says what it is, names each of `needs` the machine
   lacks with what needs it, and marks the prompt with the name. Every shell also has what the person at it types
   in any project: `clear` (ncurses), `wget`, and of the host `sudo` (setuid, which the Nix store cannot hold), `code`,
-  `claude`, `wslpath` (which `code`'s WSL launcher needs) and `docker` (the client of the machine's Docker engine, which runs a released image). The host's tools are found on the host's path as
+  the agents `claude` (Claude Code) and `copilot` (the Copilot CLI), `wslpath` (which `code`'s WSL launcher needs) and
+  `docker` (the client of the machine's Docker engine, which runs a released image); one the host lacks is not found
+  in the shell either. The host's tools are found on the host's path as
   the first entry found it, so a shell entered from inside another (`nix develop` in `nix develop`, one project's
   shell from another's) finds them too; each link is replaced by a rename, so a shell already open never loses one.
 - **The presets**, each `pkgs` → `{ packages; env; hook; }`, for `uses`; their caches go under `~/.cache/<name>/`:
@@ -58,6 +60,8 @@ project.
 
 ## Changes
 
+- **1.1.0**: every shell lets in the host's `copilot` (the Copilot CLI), beside `claude`, so either agent runs in
+  any project's shell; a host without it has none in the shell either. The tools from `nixpkgs` are 1.0.2's.
 - **1.0.2**: its comments name no other project (the `tex` preset is described by what it sets). The tools are 1.0.1's.
 - **1.0.1**: taken by the release branch, `release/qi-v2`, at each release's commit, so a project takes every release
   by `nix flake update qi-v2` (`&ref=release/qi-v2` once in its `flake.nix`); 1.0.0 was taken by its tag, which took an

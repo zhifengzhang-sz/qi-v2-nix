@@ -29,10 +29,11 @@
       # keeps none of the other's tools.
       mkPureShell = pkgs: { name, packages ? [ ], uses ? [ ], hostTools ? [ ], needs ? [ ], env ? { }, greeting ? "", closing ? "" }:
         let
-          # sudo (setuid, which the Nix store cannot hold), the editor and the agent, wslpath, which the editor's
-          # WSL launcher needs, and docker, the client of the machine's own Docker engine, which runs a product's
-          # released image (releaseImage)
-          personTools = [ "sudo" "code" "claude" "wslpath" "docker" ];
+          # sudo (setuid, which the Nix store cannot hold), the editor and the agents (Claude Code's claude, the
+          # Copilot CLI's copilot), wslpath, which the editor's WSL launcher needs, and docker, the client of the
+          # machine's own Docker engine, which runs a product's released image (releaseImage); one the host lacks is
+          # not found in the shell either
+          personTools = [ "sudo" "code" "claude" "copilot" "wslpath" "docker" ];
           allHostTools = lib.unique (hostTools ++ personTools);
           need = n:
             let line = ''__pure_need ${lib.escapeShellArg n.tool} ${lib.escapeShellArg n.by}'';
@@ -231,6 +232,6 @@ export GOMODCACHE="$GOPATH/pkg/mod" GOCACHE="$HOME/.cache/$QI_SHELL_NAME/go-buil
         };
 
     in {
-      lib = { version = "1.0.2"; inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
+      lib = { version = "1.1.0"; inherit mkPureShell tex haskell haskellLsp go rust cpp lean releaseImage; };
     };
 }
